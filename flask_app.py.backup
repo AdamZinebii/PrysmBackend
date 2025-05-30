@@ -1,0 +1,147 @@
+import os
+import functions_framework
+import flask
+import json
+import logging
+from flask import Flask, request, jsonify
+
+# Set up logging
+import sys
+logging.basicConfig(stream=sys.stderr, level=logging.INFO, format='%(levelname)s:%(name)s:%(asctime)s:%(message)s')
+logger = logging.getLogger(__name__)
+
+# Import all functions from main.py
+from main import (
+    set_user_preferences,
+    get_news_summary,
+    generate_news_summary,
+    get_trending_subtopics,
+    get_league_matches,
+    get_asset_price,
+    store_fcm_token,
+    clear_fcm_token
+)
+
+from firebase_functions import https_fn
+
+# Export HTTP functions to Cloud Run using functions_framework
+@functions_framework.http
+def http_entrypoint(request):
+    """HTTP Function entrypoint for Cloud Run.
+    This function dispatches HTTP requests to the appropriate function based on the path.
+    """
+    logger.info(f"Received HTTP request: {request.path}")
+    
+    # Extract path and remove leading /
+    path = request.path.lstrip('/')
+    
+    # Map paths to functions
+    if path == "set_user_preferences":
+        # Convert Flask request to Firebase Request format
+        firebase_req = https_fn.Request()
+        firebase_req.method = request.method
+        firebase_req.headers = request.headers
+        firebase_req.query = request.args
+        firebase_req.args = request.args
+        firebase_req.body = request.get_data(as_text=True)
+        
+        # Call the Firebase function
+        response = set_user_preferences(firebase_req)
+        return response.body, response.status, response.headers
+    
+    elif path == "get_news_summary":
+        firebase_req = https_fn.Request()
+        firebase_req.method = request.method
+        firebase_req.headers = request.headers
+        firebase_req.query = request.args
+        firebase_req.args = request.args
+        firebase_req.body = request.get_data(as_text=True)
+        
+        response = get_news_summary(firebase_req)
+        return response.body, response.status, response.headers
+    
+    elif path == "generate_news_summary":
+        firebase_req = https_fn.Request()
+        firebase_req.method = request.method
+        firebase_req.headers = request.headers
+        firebase_req.query = request.args
+        firebase_req.args = request.args
+        firebase_req.body = request.get_data(as_text=True)
+        
+        response = generate_news_summary(firebase_req)
+        return response.body, response.status, response.headers
+        
+    elif path == "get_trending_subtopics":
+        firebase_req = https_fn.Request()
+        firebase_req.method = request.method
+        firebase_req.headers = request.headers
+        firebase_req.query = request.args
+        firebase_req.args = request.args
+        firebase_req.body = request.get_data(as_text=True)
+        
+        response = get_trending_subtopics(firebase_req)
+        return response.body, response.status, response.headers
+        
+    elif path == "get_league_matches":
+        firebase_req = https_fn.Request()
+        firebase_req.method = request.method
+        firebase_req.headers = request.headers
+        firebase_req.query = request.args
+        firebase_req.args = request.args
+        firebase_req.body = request.get_data(as_text=True)
+        
+        response = get_league_matches(firebase_req)
+        return response.body, response.status, response.headers
+        
+    elif path == "get_asset_price":
+        firebase_req = https_fn.Request()
+        firebase_req.method = request.method
+        firebase_req.headers = request.headers
+        firebase_req.query = request.args
+        firebase_req.args = request.args
+        firebase_req.body = request.get_data(as_text=True)
+        
+        response = get_asset_price(firebase_req)
+        return response.body, response.status, response.headers
+    
+    # Handle callable functions
+    elif path == "store_fcm_token":
+        data = request.get_json()
+        firebase_req = https_fn.CallableRequest(data=data, auth=None, instance_id_token=None, app_check_token=None)
+        
+        response = store_fcm_token(firebase_req)
+        return jsonify(response)
+    
+    elif path == "clear_fcm_token":
+        data = request.get_json()
+        firebase_req = https_fn.CallableRequest(data=data, auth=None, instance_id_token=None, app_check_token=None)
+        
+        response = clear_fcm_token(firebase_req)
+        return jsonify(response)
+    
+    # Health check endpoint
+    elif path == "" or path == "health":
+        return jsonify({"status": "healthy"}), 200
+    
+    # Default - path not recognized
+    else:
+        return jsonify({"error": f"Unknown function: {path}"}), 404
+
+# If run directly (not through Firebase Functions)
+if __name__ == "__main__":
+    # Get the PORT from environment variable - Cloud Run sets this
+    port = int(os.environ.get("PORT", 8080))
+    
+    # Create a Flask app to handle requests
+    app = flask.Flask(__name__)
+    
+    # Route all requests to our http_entrypoint function
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def catch_all(path):
+        # Pass the request directly to our entrypoint
+        return http_entrypoint(request)
+    
+    # Start the server with the correct port binding to 0.0.0.0
+    app.run(host="0.0.0.0", port=port, debug=False)
+    logger.info(f"Server started and listening on port {port}")

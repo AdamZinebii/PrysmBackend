@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "staging": "prysmios"
+  },
+  "targets": {},
+  "etags": {}
+}

@@ -1,0 +1,29 @@
+{
+    "functions": {
+      "source": ".",
+      "codebase": "default",
+      "runtime": "python312",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "flask_app.py*",
+        "test_*.py",
+        "debug_*.py",
+        "find_*.py",
+        "run_tests.py",
+        "interactive_*.py",
+        "configure_*.py",
+        "allow_*.py",
+        "*.md",
+        "__pycache__",
+        "venv",
+        ".DS_Store",
+        "response.json",
+        "*.backup",
+        "*.log"
+      ],
+      "predeploy": []
+    }
+  }
