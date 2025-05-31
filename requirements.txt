@@ -9,15 +9,23 @@ elevenlabs>=0.2.0
 # News and Content APIs
 google-search-results>=2.4.2
 feedparser>=6.0.10
+gnews
 
 # Web scraping and content processing
-newspaper3k>=0.2.8
-nltk>=3.8.1
-requests>=2.31.0
-urllib3>=2.0.0
+newspaper3k==0.2.8
+lxml==5.4.0
+lxml_html_clean==0.4.2
+nltk==3.9.1
+requests==2.32.3
+urllib3==2.4.0
 
 # Utility libraries
 pathlib2>=2.3.7
 
 # Optional: For development and testing
-python-dotenv>=1.0.0 
+python-dotenv>=1.0.0
+
+# Added from the code block
+functions-framework==3.*
+google-cloud-firestore
+google-cloud-logging 

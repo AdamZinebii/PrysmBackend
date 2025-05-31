@@ -45,120 +45,8 @@ DETAIL_STARS = {
     "Medium": "**", 
     "Detailed": "***"
 }
-# Country name to ISO 3166-1 alpha-2 code mapping for SerpAPI/GNews
-COUNTRY_NAME_TO_CODE = {
-    # Major English-speaking countries
-    "united states": "us", "usa": "us", "america": "us",
-    "united kingdom": "gb", "uk": "gb", "britain": "gb", "england": "gb",
-    "canada": "ca", "australia": "au", "new zealand": "nz", "ireland": "ie",
-    
-    # Major European countries
-    "france": "fr", "germany": "de", "spain": "es", "italy": "it",
-    "netherlands": "nl", "holland": "nl", "belgium": "be", "switzerland": "ch",
-    "austria": "at", "sweden": "se", "norway": "no", "denmark": "dk",
-    "finland": "fi", "poland": "pl", "portugal": "pt", "greece": "gr",
-    "czech republic": "cz", "czechia": "cz", "hungary": "hu", "romania": "ro",
-    "slovakia": "sk", "slovenia": "si", "croatia": "hr", "serbia": "rs",
-    "bulgaria": "bg", "lithuania": "lt", "latvia": "lv", "estonia": "ee",
-    "iceland": "is", "luxembourg": "lu", "malta": "mt", "cyprus": "cy",
-    
-    # Major Asian countries
-    "china": "cn", "japan": "jp", "south korea": "kr", "korea": "kr",
-    "india": "in", "indonesia": "id", "thailand": "th", "vietnam": "vn",
-    "philippines": "ph", "malaysia": "my", "singapore": "sg", "taiwan": "tw",
-    "hong kong": "hk", "pakistan": "pk", "bangladesh": "bd", "sri lanka": "lk",
-    "nepal": "np", "myanmar": "mm", "burma": "mm", "cambodia": "kh",
-    "laos": "la", "mongolia": "mn",
-    
-    # Middle East & Africa
-    "israel": "il", "turkey": "tr", "saudi arabia": "sa", "uae": "ae",
-    "united arab emirates": "ae", "qatar": "qa", "kuwait": "kw", "bahrain": "bh",
-    "oman": "om", "jordan": "jo", "lebanon": "lb", "egypt": "eg",
-    "south africa": "za", "nigeria": "ng", "kenya": "ke", "morocco": "ma",
-    "algeria": "dz", "tunisia": "tn", "ghana": "gh", "ethiopia": "et",
-    "uganda": "ug", "tanzania": "tz",
-    
-    # Americas
-    "mexico": "mx", "brazil": "br", "argentina": "ar", "chile": "cl",
-    "colombia": "co", "peru": "pe", "venezuela": "ve", "ecuador": "ec",
-    "bolivia": "bo", "uruguay": "uy", "paraguay": "py", "guatemala": "gt",
-    "costa rica": "cr", "panama": "pa", "nicaragua": "ni", "honduras": "hn",
-    "el salvador": "sv", "cuba": "cu", "dominican republic": "do",
-    "jamaica": "jm", "haiti": "ht",
-    
-    # Additional
-    "russia": "ru", "ukraine": "ua", "belarus": "by", "moldova": "md",
-    "albania": "al", "bosnia and herzegovina": "ba", "montenegro": "me",
-    "north macedonia": "mk", "macedonia": "mk", "kosovo": "xk"
-}
 
-def get_country_code(country_name):
-    """
-    Convert country name to ISO 3166-1 alpha-2 country code for SerpAPI/GNews.
-    
-    Args:
-        country_name (str): Country name (case insensitive)
-    
-    Returns:
-        str: ISO country code (e.g., 'us', 'fr', 'de') or original input if not found
-    """
-    if not country_name or not isinstance(country_name, str):
-        return "us"  # Default to US
-    
-    # Normalize the country name
-    normalized_name = country_name.lower().strip()
-    
-    # Check if it's already a valid country code (2 letters)
-    if len(normalized_name) == 2 and normalized_name.isalpha():
-        return normalized_name.lower()
-    
-    # Look up in mapping
-    country_code = COUNTRY_NAME_TO_CODE.get(normalized_name)
-    
-    if country_code:
-        return country_code
-    
-    # If not found, try to find partial matches
-    for name, code in COUNTRY_NAME_TO_CODE.items():
-        if normalized_name in name or name in normalized_name:
-            return code
-    
-    # Default to US if no match found
-    return "us"
-
-def get_user_country_from_db(user_id):
-    """
-    Get user's country from database at users/{user_id}/country.
-    
-    Args:
-        user_id (str): User ID
-    
-    Returns:
-        str: Country code (e.g., 'us', 'fr', 'de')
-    """
-    try:
-        db_client = firestore.client()
-        user_doc = db_client.collection('users').document(user_id).get()
-        
-        if user_doc.exists:
-            user_data = user_doc.to_dict()
-            country = user_data.get('country')
-            
-            if country:
-                # Convert country name/code to standard code
-                country_code = get_country_code(country)
-                logger.info(f"User {user_id} country: {country} → {country_code}")
-                return country_code
-        
-        logger.warning(f"No country found for user {user_id}, defaulting to 'us'")
-        return "us"
-        
-    except Exception as e:
-        logger.error(f"Error fetching user country for {user_id}: {e}")
-        return "us"
-    
-    
-SERPAPI_API_KEY_HARDCODED = "08ef5c4be14a2d80d5f0036ca726cb8f02e4428ceba23348ac04595a766327a3"
+SERPAPI_API_KEY_HARDCODED = "cc6fb3c2829269bca1fa87ecfeb3ff984e3313b5f2f80503ff1e55d8c6b9098c"
 
 # GNews API Configuration
 GNEWS_API_KEY = "75807d7923a12e3d80d64c971ff340da"  # GNews API key
@@ -175,10 +63,10 @@ def get_openai_key():
 
 # Function to get OpenAI client
 def get_openai_client():
-    """Get cgonfdigured OpenAI clbient."""
+    """Get configured OpenAI client."""
     try:
         api_key = get_openai_key()
-        client = openai.OpenAI(api_key=api_key, timeout=30.0)
+        client = openai.OpenAI(api_key=api_key)
         logger.info("OpenAI client initialized successfully")
         return client
     except Exception as e:
@@ -4721,12 +4609,7 @@ def refresh_articles(user_id):
         
         nested_preferences = user_preferences['preferences']
         lang = user_preferences.get('language', 'en')
-        country = get_user_country_from_db(user_id)
-        if not country or country == "us":
-            # Fallback to old logic if no country in database
-            country = 'us' if lang == 'en' else 'fr' if lang == 'fr' else 'us'
-
-        logger.info(f"User {user_id} using language: {lang}, country: {country}")
+        country = 'us' if lang == 'en' else 'fr' if lang == 'fr' else 'us'
         
         logger.info(f"Found {len(nested_preferences)} topics for user {user_id}")
         
@@ -5466,11 +5349,11 @@ def get_serpapi_key():
     if key:
         return key
     logger.warning("SERPAPI_KEY not found in env, using fallback key")
-    return "08ef5c4be14a2d80d5f0036ca726cb8f02e4428ceba23348ac04595a766327a3"
+    return "244ee6479d320cc04fe56b47958dde125b98782e9a473411d1015605bdd3072c"
 
 def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_period=None, topic_token=None):
     """
-    Search Google News using GNews API first, then SerpAPI as fallback.
+    Search Google News using SerpAPI.
     
     Args:
         query (str): Search query (can be None for homepage/category browsing)
@@ -5483,99 +5366,12 @@ def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_pe
     Returns:
         dict: API response with articles or error information
     """
-    
-    def _parse_gnews_article(gnews_article):
-        """Convert GNews article to SerpAPI format for consistency."""
-        try:
-            return {
-                "title": gnews_article.get("title", ""),
-                "description": gnews_article.get("description", ""),
-                "content": gnews_article.get("content", ""),
-                "url": gnews_article.get("url", ""),
-                "image": gnews_article.get("image", ""),
-                "publishedAt": gnews_article.get("publishedAt", ""),
-                "source": {
-                    "name": gnews_article.get("source", {}).get("name", "Unknown"),
-                    "url": gnews_article.get("source", {}).get("url", "")
-                }
-            }
-        except Exception as e:
-            logger.error(f"❌ Error parsing GNews article: {e}")
-            return None
-    
-    # Step 1: Try GNews first (skip if topic_token is provided, as GNews doesn't support it)
-    gnews_articles = []
-    if query and not topic_token:  # GNews works best with queries, not for homepage browsing
-        logger.info(f"🔍 Trying GNews first: '{query}' | {gl}/{hl} | Max: {max_articles}")
-        
-        try:
-            # Import the search_gnews function
-            from gnews_api_function import search_gnews
-            
-            # Call GNews with mapped parameters
-            gnews_result = search_gnews(
-                query=query,
-                gl=gl,
-                hl=hl, 
-                max_articles=max_articles,  # Request exactly what we need
-                time_period=time_period
-            )
-            
-            # Parse GNews articles if successful
-            if 'articles' in gnews_result and gnews_result['articles']:
-                for gnews_article in gnews_result['articles'][:max_articles]:  # Limit to max_articles
-                    parsed_article = _parse_gnews_article(gnews_article)
-                    if parsed_article:
-                        gnews_articles.append(parsed_article)
-                
-                logger.info(f"✅ GNews: Found {len(gnews_articles)} articles")
-                
-                # If we have enough articles from GNews, return them (limited to max_articles)
-                if len(gnews_articles) >= max_articles:
-                    logger.info(f"🎯 GNews provided enough articles ({len(gnews_articles)}>={max_articles}), skipping SerpAPI")
-                    return {
-                        "success": True,
-                        "totalArticles": max_articles,  # Report exactly max_articles
-                        "articles": gnews_articles[:max_articles],  # Ensure exactly max_articles
-                        "serpapi_data": {
-                            "related_topics": [],
-                            "menu_links": [],
-                            "topic_token": topic_token
-                        },
-                        "source": "gnews_only"
-                    }
-            else:
-                logger.info(f"⚠️ GNews: No articles found")
-                
-        except Exception as e:
-            logger.warning(f"⚠️ GNews failed: {e}, falling back to SerpAPI")
-    
-    # Step 2: Calculate how many more articles we need from SerpAPI
-    articles_needed = max_articles - len(gnews_articles)
-    
-    if articles_needed <= 0:
-        # We already have enough from GNews (this shouldn't happen due to the check above, but safety)
-        return {
-            "success": True,
-            "totalArticles": max_articles,
-            "articles": gnews_articles[:max_articles],  # Ensure exactly max_articles
-            "serpapi_data": {
-                "related_topics": [],
-                "menu_links": [],
-                "topic_token": topic_token
-            },
-            "source": "gnews_only"
-        }
-    
-    # Step 3: Fetch remaining articles from SerpAPI
-    logger.info(f"🔄 GNews provided {len(gnews_articles)} articles, fetching {articles_needed} more from SerpAPI")
-    
     api_key = get_serpapi_key()
     
     if query:
-        logger.info(f"🔍 SerpAPI Google News Search: '{query}' | {gl}/{hl} | Max: {articles_needed}")
+        logger.info(f"🔍 SerpAPI Google News Search: '{query}' | {gl}/{hl} | Max: {max_articles}")
     else:
-        logger.info(f"🏠 SerpAPI Google News Browse: {gl}/{hl} | Max: {articles_needed} | Topic: {topic_token or 'Homepage'}")
+        logger.info(f"🏠 SerpAPI Google News Browse: {gl}/{hl} | Max: {max_articles} | Topic: {topic_token or 'Homepage'}")
     
     url = "https://serpapi.com/search.json"
     params = {
@@ -5604,78 +5400,46 @@ def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_pe
         
         if response.status_code == 200:
             data = response.json()
-            serpapi_articles = []
+            articles = []
             
             # Parse articles from different possible response structures
             news_results = data.get("news_results", [])
             stories = data.get("stories", [])
             
-            # Handle news_results (from search queries) - limit to articles_needed
-            for item in news_results[:articles_needed]:
+            # Handle news_results (from search queries)
+            for item in news_results[:max_articles]:
                 article = _parse_serpapi_story(item)
                 if article:
-                    serpapi_articles.append(article)
-                    if len(serpapi_articles) >= articles_needed:  # Stop when we have enough
-                        break
+                    articles.append(article)
             
-            # Handle stories (from homepage/category browsing) - limit to articles_needed
-            if len(serpapi_articles) < articles_needed and stories:
+            # Handle stories (from homepage/category browsing)  
+            if not articles and stories:
                 for story_section in stories:
                     section_stories = story_section.get("stories", [])
                     for story in section_stories:
-                        if len(serpapi_articles) >= articles_needed:
+                        if len(articles) >= max_articles:
                             break
                         article = _parse_serpapi_story(story)
                         if article:
-                            serpapi_articles.append(article)
-                    if len(serpapi_articles) >= articles_needed:
+                            articles.append(article)
+                    if len(articles) >= max_articles:
                         break
             
-            logger.info(f"✅ SerpAPI: Found {len(serpapi_articles)} additional articles")
-            
-            # Step 4: Combine GNews and SerpAPI articles (ensure total doesn't exceed max_articles)
-            all_articles = (gnews_articles + serpapi_articles)[:max_articles]
-            
-            # Determine the source
-            if len(gnews_articles) > 0 and len(serpapi_articles) > 0:
-                source = "gnews_and_serpapi"
-            elif len(gnews_articles) > 0:
-                source = "gnews_only" 
-            else:
-                source = "serpapi_only"
+            logger.info(f"✅ SerpAPI: Found {len(articles)} articles")
             
             return {
                 "success": True,
-                "totalArticles": len(all_articles),  # Actual count returned
-                "articles": all_articles,  # Already limited to max_articles
+                "totalArticles": len(articles),
+                "articles": articles,
                 "serpapi_data": {
                     "related_topics": data.get("related_topics", []),
                     "menu_links": data.get("menu_links", []),
                     "topic_token": topic_token
-                },
-                "source": source,
-                "gnews_count": len(gnews_articles),
-                "serpapi_count": len(serpapi_articles)
+                }
             }
         
         elif response.status_code == 401:
             logger.error("❌ SerpAPI: Invalid API key")
-            # If SerpAPI fails but we have some GNews articles, return those (limited)
-            if gnews_articles:
-                final_articles = gnews_articles[:max_articles]
-                logger.info(f"🔄 SerpAPI failed, returning {len(final_articles)} GNews articles")
-                return {
-                    "success": True,
-                    "totalArticles": len(final_articles),
-                    "articles": final_articles,
-                    "serpapi_data": {
-                        "related_topics": [],
-                        "menu_links": [],
-                        "topic_token": topic_token
-                    },
-                    "source": "gnews_only",
-                    "serpapi_error": "Invalid SerpAPI key"
-                }
             return {
                 "success": False,
                 "error": "Invalid SerpAPI key"
@@ -5683,22 +5447,6 @@ def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_pe
         
         elif response.status_code == 429:
             logger.error("❌ SerpAPI: Rate limit exceeded")
-            # If SerpAPI fails but we have some GNews articles, return those (limited)
-            if gnews_articles:
-                final_articles = gnews_articles[:max_articles]
-                logger.info(f"🔄 SerpAPI rate limited, returning {len(final_articles)} GNews articles")
-                return {
-                    "success": True,
-                    "totalArticles": len(final_articles),
-                    "articles": final_articles,
-                    "serpapi_data": {
-                        "related_topics": [],
-                        "menu_links": [],
-                        "topic_token": topic_token
-                    },
-                    "source": "gnews_only",
-                    "serpapi_error": "SerpAPI rate limit exceeded"
-                }
             return {
                 "success": False,
                 "error": "SerpAPI rate limit exceeded"
@@ -5706,22 +5454,6 @@ def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_pe
         
         else:
             logger.error(f"❌ SerpAPI: HTTP {response.status_code}")
-            # If SerpAPI fails but we have some GNews articles, return those (limited)
-            if gnews_articles:
-                final_articles = gnews_articles[:max_articles]
-                logger.info(f"🔄 SerpAPI failed, returning {len(final_articles)} GNews articles")
-                return {
-                    "success": True,
-                    "totalArticles": len(final_articles),
-                    "articles": final_articles,
-                    "serpapi_data": {
-                        "related_topics": [],
-                        "menu_links": [],
-                        "topic_token": topic_token
-                    },
-                    "source": "gnews_only",
-                    "serpapi_error": f"HTTP {response.status_code}"
-                }
             return {
                 "success": False,
                 "error": f"HTTP {response.status_code}: {response.text}"
@@ -5729,22 +5461,6 @@ def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_pe
             
     except requests.RequestException as e:
         logger.error(f"❌ SerpAPI: Request failed: {e}")
-        # If SerpAPI fails but we have some GNews articles, return those (limited)
-        if gnews_articles:
-            final_articles = gnews_articles[:max_articles]
-            logger.info(f"🔄 SerpAPI request failed, returning {len(final_articles)} GNews articles")
-            return {
-                "success": True,
-                "totalArticles": len(final_articles),
-                "articles": final_articles,
-                "serpapi_data": {
-                    "related_topics": [],
-                    "menu_links": [],
-                    "topic_token": topic_token
-                },
-                "source": "gnews_only",
-                "serpapi_error": f"Request failed: {str(e)}"
-            }
         return {
             "success": False,
             "error": f"Request failed: {str(e)}"
@@ -5770,51 +5486,10 @@ def _parse_serpapi_story(story):
         # Extract thumbnail
         thumbnail = story.get("thumbnail", "")
         
-        # Start with empty description (SerpAPI doesn't provide it)
-        description = ""
-        
-        # Try to extract article summary using newspaper3k
-        if link:
-            try:
-                logger.info(f"🔍 Attempting to extract summary for: {link}")
-                
-                from newspaper import Article
-                import requests
-                
-                # Create newspaper article object
-                article = Article(link)
-                
-                # Set timeout and user agent
-                article.config.request_timeout = 10
-                article.config.browser_user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                
-                # Download and parse the article
-                article.download()
-                article.parse()
-                
-                # Try to get summary/description
-                if article.summary and len(article.summary.strip()) > 20:
-                    description = article.summary.strip()
-                    logger.info(f"✅ Extracted summary ({len(description)} chars)")
-                elif article.text and len(article.text.strip()) > 50:
-                    # Use LLM to summarize the full article text
-                    description = summarize_article_content(article.text.strip())
-                    if not description:  # Fallback to truncated text if LLM fails
-                        description = article.text.strip()[:200] + "..." if len(article.text.strip()) > 200 else article.text.strip()
-                        logger.info(f"Error LLM Generation ({len(description)} chars)")
-                    else:
-                        logger.info(f"✅ Generated LLM description ({len(description)} chars)")
-                else:
-                    logger.warning(f"⚠️ No usable content found in article")
-                    
-            except Exception as e:
-                logger.warning(f"⚠️ Failed to extract summary with newspaper3k: {e}")
-                # Keep description empty if extraction fails
-                
         # Create article in our standard format
         article = {
             "title": title,
-            "description": description,  # Now contains extracted summary or remains empty
+            "description": "",  # SerpAPI doesn't always provide description
             "content": "",      # SerpAPI doesn't provide full content
             "url": link,
             "image": thumbnail,
@@ -6013,7 +5688,7 @@ def get_elevenlabs_key():
     if key:
         return key
     logger.warning("ELEVENLABS_API_KEY not found in env, using fallback key")
-    return "sk_24393187f0756edaaf31f0dab677555855faae42ac90d1d6"
+    return "sk_332f27cd984ed4fb2eb9a18bd6eb202b45fe290873db787f"
 
 # --- Placeholder for future endpoints ---
 # TODO: Add your new endpoints here
@@ -7218,7 +6893,7 @@ Natural flow:
 
 IMPORTANT: Cover every single article provided - don't leave any out. Mention every article title. Write ONLY what needs to be spoken aloud."""
 
-        # Fodrmat the articles data as a clean JSON string
+        # Format the articles data as a clean JSON string
         user_message = f"Here's the news data to create a podcast script for:\n\n{json.dumps(topics_data, indent=2)}"
         
         # Use OpenAI to generate the script
@@ -8132,7 +7807,7 @@ def update_endpoint(req: https_fn.Request) -> https_fn.Response:
             'Access-Control-Max-Age': '3600'
         }
         return https_fn.Response('', headers=headers)
-    #ee
+    
     if req.method != 'POST':
         headers = {
             'Access-Control-Allow-Origin': '*',
@@ -8193,56 +7868,3 @@ def update_endpoint(req: https_fn.Request) -> https_fn.Response:
             "timestamp": datetime.now().isoformat()
         }
         return https_fn.Response(json.dumps(error_response), headers=headers, status=500)
-    
-
-
-def summarize_article_content(content):
-    """
-    Use OpenAI to create a concise summary of article content.
-    
-    Args:
-        content (str): Full article text content
-        
-    Returns:
-        str: Concise summary under 100 words, or empty string if failed
-    """
-    if not content or len(content.strip()) < 50:
-        return ""
-    
-    try:
-        client = get_openai_client()
-        
-        # Truncate content if too long (OpenAI token limits)
-        max_content_length = 4000  # Leave room for prompt and response
-        if len(content) > max_content_length:
-            content = content[:max_content_length] + "..."
-        
-        prompt = f"""Summarize this news article in under 100 words. Focus on the key facts, main events, and most important details. Be concise and factual:
-
-{content}
-
-Summary:"""
-
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a news summarization expert. Create concise, factual summaries under 100 words that capture the essential information."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=150,  # Roughly 100 words
-            temperature=0.3  # Lower temperature for more factual, consistent summaries
-        )
-        
-        summary = response.choices[0].message.content.strip()
-        
-        # Ensure it's not too long (backup check)
-        if len(summary.split()) > 100:
-            words = summary.split()[:100]
-            summary = " ".join(words) + "..."
-        
-        logger.info(f"✅ LLM summary generated ({len(summary)} chars, {len(summary.split())} words)")
-        return summary
-        
-    except Exception as e:
-        logger.warning(f"⚠️ Failed to generate LLM summary: {e}")
-        return ""# Timeout fix for OpenAI 2025-05-31

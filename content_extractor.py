@@ -202,8 +202,11 @@ def fetch_content(url: str, language: str = 'en') -> Dict[str, Optional[str]]:
 if __name__ == "__main__":
     # Test the content extractor
     test_urls = [
-        "https://www.bbc.com/news/technology-67890123",
-        "https://www.cnn.com/2023/12/01/tech/ai-news/index.html"
+        "https://www.reuters.com/world/middle-east/dubai-real-estate-prices-likely-face-double-digit-fall-after-years-boom-fitch-2025-05-29/",
+        "https://www.tcpalm.com/story/marketplace/real-estate/2025/05/30/florida-real-estate-condo-townhome-listings-surge-on-treasure-coast-condominium-analysis-market/83624424007/",
+        "https://www.realestatenews.com/2025/03/13/the-housing-market-is-improving-but-buyers-are-anxious",
+        "https://www.newsweek.com/recession-housing-market-mortgage-rates-price-trump-tariffs-2043195",
+
     ]
     
     extractor = ContentExtractor()
@@ -217,3 +220,4 @@ if __name__ == "__main__":
     print(f"Processed {len(results)} URLs")
     for i, result in enumerate(results):
         print(f"URL {i+1}: {'Success' if result['success'] else 'Failed'}") 
+        print(result['summary'])
