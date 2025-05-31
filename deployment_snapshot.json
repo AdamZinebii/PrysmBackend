@@ -1,0 +1,166 @@
+{
+  "timestamp": "2025-05-31T00:30:05.704178",
+  "functions": {
+    "health_check": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "a07a46019b3da8e811c60436b5a89646",
+      "docstring_preview": "Basic health check endpoint.",
+      "line_count": 47
+    },
+    "test_gnews_api": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "b3c22f5b000b1b236ca9ac3f19753a11",
+      "docstring_preview": "Test endpoint for GNews API functionality.",
+      "line_count": 101
+    },
+    "fetch_news_with_gnews": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "7c023bfdcefe0db3acbf8cc2bed1ca6d",
+      "docstring_preview": "Fetch news articles using GNews API for a specific topic/query.",
+      "line_count": 103
+    },
+    "save_initial_preferences": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "3d2cfebc1ebb9aa12afe5ee65e84ec1f",
+      "docstring_preview": "Save initial user preferences to Firestore Database.\n\nExpected JSON payload (NEW NESTED FORMAT):\n{\n ...",
+      "line_count": 186
+    },
+    "update_specific_subjects": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "bbd115847f135fd0c1727c06c957b33d",
+      "docstring_preview": "Update specific subjects for a user based on conversation analysis.\nThis function is called in paral...",
+      "line_count": 145
+    },
+    "answer": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "152e2fc8eb90d5534f3f1e8c76b73403",
+      "docstring_preview": "Handle conversation with AI assistant based on user preferences.\n\nExpected JSON payload:\n{\n    \"user...",
+      "line_count": 163
+    },
+    "get_trending_for_subtopic": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "de231760b09138042752f7d8e4cb7da2",
+      "docstring_preview": "HTTP endpoint to get trending topics for a specific subtopic.\n\nExpected request body:\n{\n    \"subtopi...",
+      "line_count": 101
+    },
+    "get_trending_subtopics": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "3350ac27e3451fe9f779a6e03d4b9cad",
+      "docstring_preview": "HTTP endpoint to get trending subtopics for a given topic.\n\nExpected request body:\n{\n    \"topic\": \"t...",
+      "line_count": 106
+    },
+    "get_user_preferences": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "9585c7c0cb8350df158e219348ca5d5c",
+      "docstring_preview": "HTTP function to get user preferences for updating.\n\nExpected request:\n{\n    \"user_id\": \"user123\"\n}\n...",
+      "line_count": 138
+    },
+    "get_articles_subtopics_user_endpoint": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "ec9bb7c62e08a005d63882d2f11dc346",
+      "docstring_preview": "HTTP endpoint to fetch articles and Reddit posts for a user's subtopic.\n\nExpected request (POST):\n{\n...",
+      "line_count": 154
+    },
+    "get_topic_posts_endpoint": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "7ec0e7cf31cf37079468c37f771c7bde",
+      "docstring_preview": "HTTP endpoint to fetch articles and Reddit posts for a complete user topic.\n\nExpected request (POST)...",
+      "line_count": 139
+    },
+    "get_pickup_line_endpoint": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "9db124e775fe843b15b879db6310bd91",
+      "docstring_preview": "HTTP endpoint to generate pickup lines for topics.\n\nExpected request (POST):\n{\n    \"topic_name\": \"Bu...",
+      "line_count": 102
+    },
+    "get_topic_summary_endpoint": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "6c1323db79b6d565618f1b7f2d34fabf",
+      "docstring_preview": "HTTP endpoint to generate comprehensive topic summaries.\n\nExpected request (POST):\n{\n    \"topic_name...",
+      "line_count": 102
+    },
+    "get_reddit_world_summary_endpoint": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "71f9a320a41463ef020a6fc651f7daea",
+      "docstring_preview": "HTTP endpoint to generate executive world summaries from Reddit posts.\n\nExpected request (POST):\n{\n ...",
+      "line_count": 97
+    },
+    "get_complete_topic_report_endpoint": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "5bcb34e7c9ff789dbaabe8d6fbd18ecd",
+      "docstring_preview": "HTTP endpoint to generate complete topic reports.\n\nExpected request (POST):\n{\n    \"topic_name\": \"Bus...",
+      "line_count": 110
+    },
+    "refresh_articles_endpoint": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "582851e842f6396ee91919d59b7614fb",
+      "docstring_preview": "HTTP endpoint to refresh articles for a user.\n\nExpected request (POST):\n{\n    \"user_id\": \"user123\"\n}...",
+      "line_count": 98
+    },
+    "get_user_articles_endpoint": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "50b7ea339c620af2f9538437a0198f49",
+      "docstring_preview": "HTTP endpoint to get stored articles for a user.\n\nExpected request (POST):\n{\n    \"user_id\": \"user123...",
+      "line_count": 86
+    },
+    "get_complete_report_endpoint": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "eacff5b6d23fd43db8385c26c5dcf782",
+      "docstring_preview": "HTTP endpoint to generate complete reports for all user topics.\n\nExpected request (POST):\n{\n    \"use...",
+      "line_count": 85
+    },
+    "get_aifeed_reports_endpoint": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "a66081e8f0908dbd4e69a8ef96b03b0f",
+      "docstring_preview": "HTTP endpoint to get AI feed reports for a user.\n\nExpected request (POST):\n{\n    \"user_id\": \"user123...",
+      "line_count": 85
+    },
+    "text_to_speech": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "daaf30fbcac8b9991be6b9ee972d5e81",
+      "docstring_preview": "Convert text to speech using ElevenLabs API.",
+      "line_count": 87
+    },
+    "generate_media_twin_script_endpoint": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "6b55491216b3ee4394208b8f71667e91",
+      "docstring_preview": "HTTP endpoint pour g\u00e9n\u00e9rer un script de media twin.\n\nExpected request (POST):\n{\n    \"topic_name\": \"B...",
+      "line_count": 86
+    },
+    "generate_user_media_twin_script_endpoint": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "22e71ac46f8c9e01d7c716409854e331",
+      "docstring_preview": "HTTP endpoint pour g\u00e9n\u00e9rer un script de media twin bas\u00e9 sur tous les articles d'un utilisateur.\n\nExp...",
+      "line_count": 81
+    },
+    "generate_complete_user_media_twin_script_endpoint": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "04d0673fa3d2e54e7b8621d7db7c54cc",
+      "docstring_preview": "HTTP endpoint pour g\u00e9n\u00e9rer un script de media twin complet avec IA bas\u00e9 sur tous les articles d'un u...",
+      "line_count": 96
+    },
+    "generate_simple_podcast_endpoint": {
+      "signature": "(req: flask.wrappers.Request) -> flask.wrappers.Response",
+      "source_hash": "3dd62235cff014f6d0410740520481bf",
+      "docstring_preview": "HTTP endpoint to generate a complete podcast (script + audio).\n\nExpected request (POST):\n{\n    \"user...",
+      "line_count": 97
+    }
+  },
+  "files": {
+    "main.py": {
+      "hash": "a5ebc12bb8b93ec7d210ad459264ea12",
+      "size": 295263,
+      "modified": "2025-05-30T16:41:34"
+    },
+    "firebase.json": {
+      "hash": "4b4b9e60aeea6a6c67a88a5b25510e6b",
+      "size": 587,
+      "modified": "2025-05-29T18:23:02"
+    },
+    "requirements.txt": {
+      "hash": "160a8d0f30060bb35816ada4e8909b14",
+      "size": 408,
+      "modified": "2025-05-31T00:24:55.697402"
+    }
+  }
+}

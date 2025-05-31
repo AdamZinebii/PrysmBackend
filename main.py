@@ -224,7 +224,7 @@ def gnews_top_headlines(category="general", lang="en", country="us", max_article
             logger.warning(f"⚠️ Could not parse from_date '{from_date}', using all time")
     
     if category.lower() == "general" or topic_token is None:
-        # For general news, get the homepage without a specific topic
+        # For general news, get the homepage headlines
         logger.info(f"📰 Fetching general homepage headlines")
         result = serpapi_google_news_search(
             query=None,
@@ -1194,7 +1194,7 @@ Quoi extraire (SEULEMENT si l'utilisateur les mentionne):
 Quoi NE PAS extraire:
 - Concepts très généraux comme "technologie", "sport" (sans spécificités)
 - Choses mentionnées seulement par l'assistant
-- Sujets implicites non mentionnés explicitement
+- Sujets impliqués ou suggérés
 
 IMPORTANT: Si l'utilisateur dit "LLMs", "robot", "robotique", "apprentissage automatique", "IA" - ces termes SONT assez spécifiques pour être extraits.
 
@@ -7252,4 +7252,478 @@ def generate_simple_podcast_endpoint(req: https_fn.Request) -> https_fn.Response
             "message": "An error occurred while generating complete podcast",
             "timestamp": datetime.now().isoformat()
         }
-        return https_fn.Response(json.dumps(error_response), headers=headers, status=500) 
+        return https_fn.Response(json.dumps(error_response), headers=headers, status=500)
+
+# --- Complete User Update Pipeline ---
+
+def send_push_notification(user_id, title, body):
+    """
+    Send a push notification to a user using their FCM token.
+    
+    Args:
+        user_id (str): User ID to send notification to
+        title (str): Notification title
+        body (str): Notification body
+    
+    Returns:
+        dict: Result of the notification send
+    """
+    try:
+        logger.info(f"📱 Sending push notification to user: {user_id}")
+        
+        # Get user's FCM token from Firestore
+        db = firestore.client()
+        user_doc = db.collection('users').document(user_id).get()
+        
+        if not user_doc.exists:
+            logger.warning(f"⚠️ User document not found for user_id: {user_id}")
+            return {
+                "success": False,
+                "error": "User document not found",
+                "user_id": user_id
+            }
+        
+        user_data = user_doc.to_dict()
+        fcm_token = user_data.get('fcmToken')
+        
+        if not fcm_token:
+            logger.warning(f"⚠️ No FCM token found for user: {user_id}")
+            return {
+                "success": False,
+                "error": "No FCM token found for user",
+                "user_id": user_id
+            }
+        
+        # Create FCM message
+        message = messaging.Message(
+            notification=messaging.Notification(
+                title=title,
+                body=body
+            ),
+            token=fcm_token,
+            android=messaging.AndroidConfig(
+                priority='high',
+                notification=messaging.AndroidNotification(
+                    sound='default',
+                    click_action='FLUTTER_NOTIFICATION_CLICK'
+                )
+            ),
+            apns=messaging.APNSConfig(
+                payload=messaging.APNSPayload(
+                    aps=messaging.Aps(
+                        sound='default',
+                        badge=1
+                    )
+                )
+            )
+        )
+        
+        # Send the message
+        response = messaging.send(message)
+        logger.info(f"✅ Push notification sent successfully: {response}")
+        
+        return {
+            "success": True,
+            "message_id": response,
+            "user_id": user_id,
+            "title": title,
+            "body": body
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Error sending push notification to user {user_id}: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "user_id": user_id
+        }
+
+def update(user_id, presenter_name="Alex", language="en", voice_id="cmudN4ihcI42n48urXgc"):
+    """
+    Complete user update pipeline that chains three operations:
+    1. Refresh articles for the user
+    2. Generate complete report
+    3. Generate simple podcast
+    4. Send push notification
+    
+    Args:
+        user_id (str): User ID to update
+        presenter_name (str): Name of the presenter for podcast
+        language (str): Language for the content ('en', 'fr', etc.)
+        voice_id (str): ElevenLabs voice ID for TTS
+    
+    Returns:
+        dict: Complete result with all operation results
+    """
+    try:
+        logger.info(f"🚀 Starting complete update pipeline for user: {user_id}")
+        
+        # Step 1: Refresh articles
+        logger.info(f"📰 Step 1/4: Refreshing articles for user {user_id}")
+        refresh_result = refresh_articles(user_id)
+        
+        if not refresh_result.get("success"):
+            raise Exception(f"Failed to refresh articles: {refresh_result.get('error', 'Unknown error')}")
+        
+        logger.info(f"✅ Articles refreshed: {refresh_result.get('total_articles_saved', 0)} articles")
+        
+        # Step 2: Generate complete report
+        logger.info(f"📊 Step 2/4: Generating complete report for user {user_id}")
+        report_result = get_complete_report(user_id)
+        
+        if not report_result.get("success"):
+            raise Exception(f"Failed to generate complete report: {report_result.get('error', 'Unknown error')}")
+        
+        logger.info(f"✅ Complete report generated")
+        
+        # Step 3: Generate simple podcast
+        logger.info(f"🎙️ Step 3/4: Generating podcast for user {user_id}")
+        podcast_result = generate_simple_podcast(
+            user_id=user_id,
+            presenter_name=presenter_name,
+            language=language,
+            voice_id=voice_id
+        )
+        
+        if not podcast_result.get("success"):
+            raise Exception(f"Failed to generate podcast: {podcast_result.get('error', 'Unknown error')}")
+        
+        logger.info(f"✅ Podcast generated: {podcast_result.get('audio_url', 'No URL')}")
+        
+        # Step 4: Send push notification
+        logger.info(f"📱 Step 4/4: Sending push notification to user {user_id}")
+        notification_result = send_push_notification(
+            user_id=user_id,
+            title="Your updates are available",
+            body="Fresh news articles and podcast are ready!"
+        )
+        
+        if notification_result.get("success"):
+            logger.info(f"✅ Push notification sent successfully")
+        else:
+            logger.warning(f"⚠️ Push notification failed: {notification_result.get('error', 'Unknown error')}")
+        
+        # Prepare complete result
+        result = {
+            "success": True,
+            "user_id": user_id,
+            "pipeline_completed": True,
+            "refresh_result": {
+                "success": refresh_result.get("success"),
+                "total_articles": refresh_result.get("total_articles_saved", 0),
+                "timestamp": refresh_result.get("timestamp")
+            },
+            "report_result": {
+                "success": report_result.get("success"),
+                "reports_count": len(report_result.get("reports", [])),
+                "timestamp": report_result.get("timestamp")
+            },
+            "podcast_result": {
+                "success": podcast_result.get("success"),
+                "audio_url": podcast_result.get("audio_url"),
+                "script_storage_url": podcast_result.get("script_storage_url"),
+                "metadata": podcast_result.get("metadata", {})
+            },
+            "notification_result": {
+                "success": notification_result.get("success"),
+                "message_id": notification_result.get("message_id"),
+                "error": notification_result.get("error") if not notification_result.get("success") else None
+            },
+            "pipeline_timestamp": datetime.now().isoformat(),
+            "total_duration_estimate": "Complete pipeline execution"
+        }
+        
+        logger.info(f"🎉 Complete update pipeline successful for user {user_id}")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error in update pipeline for user {user_id}: {e}")
+        return {
+            "success": False,
+            "user_id": user_id,
+            "pipeline_completed": False,
+            "error": str(e),
+            "message": "Failed to complete update pipeline",
+            "timestamp": datetime.now().isoformat()
+        }
+
+# --- Scheduled User Updates ---
+
+def should_trigger_update_for_user(user_id, scheduling_prefs, current_time):
+    """
+    Check if a user should receive an update based on their scheduling preferences.
+    
+    Args:
+        user_id (str): User ID
+        scheduling_prefs (dict): User's scheduling preferences
+        current_time (datetime): Current datetime
+    
+    Returns:
+        bool: True if update should be triggered
+    """
+    try:
+        if not scheduling_prefs:
+            logger.info(f"⏭️ No scheduling preferences for user {user_id}")
+            return False
+        
+        pref_type = scheduling_prefs.get('type')
+        pref_hour = scheduling_prefs.get('hour', 9)
+        pref_minute = scheduling_prefs.get('minute', 0)
+        pref_day = scheduling_prefs.get('day')  # Only for weekly
+        
+        # Create target time for today
+        target_time = current_time.replace(hour=pref_hour, minute=pref_minute, second=0, microsecond=0)
+        
+        # Check if we're within the last 15 minutes of the target time
+        time_diff = current_time - target_time
+        
+        # For daily scheduling
+        if pref_type == 'daily':
+            # Check if target time was within the last 15 minutes
+            if timedelta(minutes=0) <= time_diff <= timedelta(minutes=15):
+                logger.info(f"✅ Daily update trigger for user {user_id}: target was {target_time}, current is {current_time}")
+                return True
+        
+        # For weekly scheduling
+        elif pref_type == 'weekly' and pref_day:
+            current_day = current_time.strftime('%A').lower()
+            
+            # Check if it's the right day and within the time window
+            if current_day == pref_day.lower():
+                if timedelta(minutes=0) <= time_diff <= timedelta(minutes=15):
+                    logger.info(f"✅ Weekly update trigger for user {user_id}: target was {pref_day} {target_time}, current is {current_day} {current_time}")
+                    return True
+        
+        return False
+        
+    except Exception as e:
+        logger.error(f"Error checking update trigger for user {user_id}: {e}")
+        return False
+
+def trigger_user_update_async(user_id, presenter_name="Alex", language="en", voice_id="cmudN4ihcI42n48urXgc"):
+    """
+    Trigger user update asynchronously without blocking.
+    
+    Args:
+        user_id (str): User ID to update
+        presenter_name (str): Presenter name for podcast
+        language (str): Content language
+        voice_id (str): Voice ID for TTS
+    """
+    try:
+        logger.info(f"🚀 Starting async update for user: {user_id}")
+        
+        # Create a thread to run the update without blocking
+        def run_update():
+            try:
+                result = update(
+                    user_id=user_id,
+                    presenter_name=presenter_name,
+                    language=language,
+                    voice_id=voice_id
+                )
+                if result.get("success"):
+                    logger.info(f"✅ Async update completed successfully for user {user_id}")
+                else:
+                    logger.error(f"❌ Async update failed for user {user_id}: {result.get('error')}")
+            except Exception as e:
+                logger.error(f"❌ Exception in async update for user {user_id}: {e}")
+        
+        # Start the update in a separate thread
+        import threading
+        thread = threading.Thread(target=run_update, daemon=True)
+        thread.start()
+        
+        logger.info(f"🔄 Async update thread started for user {user_id}")
+        
+    except Exception as e:
+        logger.error(f"Error starting async update for user {user_id}: {e}")
+
+@scheduler_fn.on_schedule(schedule="*/15 * * * *", timeout_sec=540)  # Every 15 minutes, 9 min timeout
+def scheduled_user_updates(req):
+    """
+    Scheduled function that runs every 15 minutes to check user scheduling preferences
+    and trigger updates for users whose scheduled time has arrived.
+    
+    This function:
+    1. Gets current time
+    2. Reads all scheduling preferences from Firestore
+    3. Checks which users need updates based on their preferences
+    4. Triggers async updates for those users
+    """
+    try:
+        logger.info("⏰ Starting scheduled user updates check...")
+        
+        # Get current time
+        current_time = datetime.now()
+        logger.info(f"🕐 Current time: {current_time}")
+        
+        # Get Firestore client
+        db = firestore.client()
+        
+        # Read all scheduling preferences
+        scheduling_ref = db.collection('scheduling_preferences')
+        all_schedules = scheduling_ref.stream()
+        
+        users_to_update = []
+        total_users_checked = 0
+        
+        # Check each user's scheduling preferences
+        for doc in all_schedules:
+            total_users_checked += 1
+            user_id = doc.id
+            scheduling_prefs = doc.to_dict()
+            
+            logger.info(f"🔍 Checking user {user_id}: {scheduling_prefs}")
+            
+            # Check if this user should get an update
+            if should_trigger_update_for_user(user_id, scheduling_prefs, current_time):
+                users_to_update.append({
+                    'user_id': user_id,
+                    'preferences': scheduling_prefs
+                })
+                logger.info(f"📋 Added user {user_id} to update queue")
+        
+        logger.info(f"📊 Scheduling check complete: {total_users_checked} users checked, {len(users_to_update)} users need updates")
+        
+        # Trigger updates for all qualifying users (async, non-blocking)
+        for user_info in users_to_update:
+            user_id = user_info['user_id']
+            prefs = user_info['preferences']
+            
+            # You could customize these based on user preferences if stored
+            presenter_name = "Alex"
+            language = "en"
+            voice_id = "cmudN4ihcI42n48urXgc"
+            
+            logger.info(f"🚀 Triggering async update for user: {user_id}")
+            trigger_user_update_async(
+                user_id=user_id,
+                presenter_name=presenter_name,
+                language=language,
+                voice_id=voice_id
+            )
+        
+        # Return summary (for logging)
+        summary = {
+            "success": True,
+            "timestamp": current_time.isoformat(),
+            "total_users_checked": total_users_checked,
+            "users_triggered": len(users_to_update),
+            "triggered_user_ids": [u['user_id'] for u in users_to_update]
+        }
+        
+        logger.info(f"✅ Scheduled updates summary: {summary}")
+        return summary
+        
+    except Exception as e:
+        logger.error(f"❌ Error in scheduled user updates: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+
+@https_fn.on_request(timeout_sec=900)  # 15 minutes timeout for the complete pipeline
+def update_endpoint(req: https_fn.Request) -> https_fn.Response:
+    """
+    HTTP endpoint to run complete user update pipeline.
+    
+    Expected request (POST):
+    {
+        "user_id": "6YV8wgIEBrev7e2Ep7fm0InByq02",
+        "presenter_name": "Alex",
+        "language": "en",
+        "voice_id": "cmudN4ihcI42n48urXgc"
+    }
+    
+    Returns:
+    {
+        "success": true,
+        "user_id": "6YV8wgIEBrev7e2Ep7fm0InByq02",
+        "pipeline_completed": true,
+        "refresh_result": {
+            "success": true,
+            "total_articles": 45
+        },
+        "report_result": {
+            "success": true,
+            "reports_count": 3
+        },
+        "podcast_result": {
+            "success": true,
+            "audio_url": "https://storage.googleapis.com/...",
+            "script_storage_url": "https://storage.googleapis.com/..."
+        }
+    }
+    """
+    # Handle CORS preflight
+    if req.method == 'OPTIONS':
+        headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Max-Age': '3600'
+        }
+        return https_fn.Response('', headers=headers)
+    
+    if req.method != 'POST':
+        headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+        }
+        return https_fn.Response(
+            json.dumps({"success": False, "error": "Method not allowed. Use POST."}),
+            headers=headers,
+            status=405
+        )
+    
+    try:
+        # Parse request data
+        data = req.get_json()
+        if not data:
+            raise ValueError("No JSON data provided")
+        
+        user_id = data.get('user_id')
+        presenter_name = data.get('presenter_name', 'Alex')
+        language = data.get('language', 'en')
+        voice_id = data.get('voice_id', 'cmudN4ihcI42n48urXgc')
+        
+        # Validate required parameters
+        if not user_id:
+            raise ValueError("Missing user_id")
+        
+        logger.info(f"Starting complete update pipeline for user: {user_id}")
+        
+        # Call the main function
+        result = update(
+            user_id=user_id,
+            presenter_name=presenter_name,
+            language=language,
+            voice_id=voice_id
+        )
+        
+        headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+        }
+        
+        return https_fn.Response(
+            json.dumps(result),
+            headers=headers,
+            status=200 if result.get("success") else 500
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in update_endpoint: {e}")
+        headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+        }
+        error_response = {
+            "success": False,
+            "error": str(e),
+            "message": "An error occurred while running update pipeline",
+            "timestamp": datetime.now().isoformat()
+        }
+        return https_fn.Response(json.dumps(error_response), headers=headers, status=500)
