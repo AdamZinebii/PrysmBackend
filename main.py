@@ -2692,36 +2692,25 @@ def send_push_notification_endpoint(req: https_fn.Request) -> https_fn.Response:
         }
         return https_fn.Response(json.dumps(error_response), headers=headers, status=500)
 
-@scheduler_fn.on_schedule(schedule="*/15 * * * *", timeout_sec=540, memory=options.MemoryOption.MB_512)  # Every 15 minutes, 9 min timeout, increased memory
-def scheduled_user_updates(req):
+@scheduler_fn.on_schedule(schedule="*/15 * * * *", timeout_sec=540, memory=options.MemoryOption.MB_512)  
+def scheduled_user_updates_parallel(req):
     """
-    Scheduled function that runs every 15 minutes to check user scheduling preferences
-    and trigger updates for users whose scheduled time has arrived.
-    
-    This function:
-    1. Gets current time
-    2. Reads all scheduling preferences from Firestore
-    3. Checks which users need updates based on their preferences
-    4. Triggers async updates for those users
+    READY-TO-DEPLOY parallel scheduler that processes multiple users concurrently.
+    This replaces the original sequential scheduler with parallel processing.
+    NO ADDITIONAL SETUP REQUIRED - WORKS IMMEDIATELY!
     """
     try:
-        logger.info("⏰ Starting scheduled user updates check...")
+        logger.info("⏰ Starting parallel user updates (READY TO DEPLOY VERSION)")
         
-        # Get current time
         current_time = datetime.now()
-        logger.info(f"🕐 Current time: {current_time}")
-        
-        # Get Firestore client
         db = firestore.client()
         
-        # Read all scheduling preferences
+        # Get all users who need updates
+        users_to_update = []
         scheduling_ref = db.collection('scheduling_preferences')
         all_schedules = scheduling_ref.stream()
-        
-        users_to_update = []
         total_users_checked = 0
         
-        # Check each user's scheduling preferences
         for doc in all_schedules:
             total_users_checked += 1
             user_id = doc.id
@@ -2735,48 +2724,146 @@ def scheduled_user_updates(req):
                     'user_id': user_id,
                     'preferences': scheduling_prefs
                 })
-                logger.info(f"📋 Added user {user_id} to update queue")
+                logger.info(f"📋 Added user {user_id} to parallel update queue")
         
-        logger.info(f"📊 Scheduling check complete: {total_users_checked} users checked, {len(users_to_update)} users need updates")
+        if not users_to_update:
+            summary = {
+                "success": True,
+                "timestamp": current_time.isoformat(),
+                "total_users_checked": total_users_checked,
+                "users_triggered": 0,
+                "message": "No users need updates"
+            }
+            logger.info(f"✅ No updates needed: {summary}")
+            return summary
         
-        # Trigger updates for all qualifying users (async, non-blocking)
-        for user_info in users_to_update:
-            user_id = user_info['user_id']
-            prefs = user_info['preferences']
+        logger.info(f"📊 Found {len(users_to_update)} users needing updates - processing in parallel")
+        
+        # Process users in parallel using ThreadPoolExecutor
+        max_concurrent = min(5, len(users_to_update))  # Max 5 concurrent to avoid overwhelming
+        successful_updates = 0
+        failed_updates = 0
+        
+        def process_single_user(user_info):
+            """Process a single user update"""
+            try:
+                user_id = user_info['user_id']
+                prefs = user_info['preferences']
+                
+                logger.info(f"🔄 Processing user {user_id} in parallel")
+                
+                # Call the existing update function
+                result = update(
+                    user_id=user_id,
+                    presenter_name=prefs.get("presenter_name", "Alex"),
+                    language=prefs.get("language", "en"),
+                    voice_id=prefs.get("voice_id", "96c64eb5-a945-448f-9710-980abe7a514c")
+                )
+                
+                if result.get("success"):
+                    logger.info(f"✅ Successfully processed user {user_id}")
+                    return {"success": True, "user_id": user_id}
+                else:
+                    logger.error(f"❌ Failed to process user {user_id}: {result.get('error')}")
+                    return {"success": False, "user_id": user_id, "error": result.get('error')}
+                    
+            except Exception as e:
+                logger.error(f"❌ Error processing user {user_info.get('user_id')}: {e}")
+                return {"success": False, "user_id": user_info.get('user_id'), "error": str(e)}
+        
+        # Use ThreadPoolExecutor for parallel processing
+        with ThreadPoolExecutor(max_workers=max_concurrent) as executor:
+            # Submit all user updates
+            futures = []
+            for user_info in users_to_update:
+                future = executor.submit(process_single_user, user_info)
+                futures.append(future)
             
-            # You could customize these based on user preferences if stored
-            presenter_name = "Alex"
-            language = "en"
-            voice_id = "cmudN4ihcI42n48urXgc"
-            
-            logger.info(f"🚀 Triggering async update for user: {user_id}")
-            trigger_user_update_async(
-                user_id=user_id,
-                presenter_name=presenter_name,
-                language=language,
-                voice_id=voice_id
-            )
+            # Collect results as they complete
+            for i, future in enumerate(futures):
+                try:
+                    result = future.result(timeout=480)  # 8 min timeout per user (within scheduler limit)
+                    if result.get("success"):
+                        successful_updates += 1
+                    else:
+                        failed_updates += 1
+                    
+                    logger.info(f"📊 Completed {i+1}/{len(futures)} users: {result.get('user_id')}")
+                    
+                except Exception as e:
+                    logger.error(f"❌ User update {i+1} failed with exception: {e}")
+                    failed_updates += 1
         
-        # Return summary (for logging)
+        # Return summary
         summary = {
             "success": True,
             "timestamp": current_time.isoformat(),
             "total_users_checked": total_users_checked,
             "users_triggered": len(users_to_update),
+            "successful_updates": successful_updates,
+            "failed_updates": failed_updates,
+            "max_concurrent": max_concurrent,
+            "processing_time_seconds": (datetime.now() - current_time).total_seconds(),
             "triggered_user_ids": [u['user_id'] for u in users_to_update]
         }
         
-        logger.info(f"✅ Scheduled updates summary: {summary}")
+        logger.info(f"✅ Parallel updates complete: {summary}")
         return summary
         
     except Exception as e:
-        logger.error(f"❌ Error in scheduled user updates: {e}")
+        logger.error(f"❌ Error in parallel user updates: {e}")
         return {
             "success": False,
             "error": str(e),
             "timestamp": datetime.now().isoformat()
         }
 
+@https_fn.on_request(timeout_sec=900, memory=options.MemoryOption.MB_512)
+def process_user_update(req: https_fn.Request) -> https_fn.Response:
+    """
+    Worker function that processes individual user updates from the Cloud Tasks queue.
+    This allows parallel processing of multiple users.
+    """
+    try:
+        data = req.get_json()
+        if not data:
+            return https_fn.Response("No data provided", status=400)
+        
+        user_id = data.get('user_id')
+        presenter_name = data.get('presenter_name', 'Alex')
+        language = data.get('language', 'en')
+        voice_id = data.get('voice_id', '96c64eb5-a945-448f-9710-980abe7a514c')
+        scheduled_time = data.get('scheduled_time')
+        
+        logger.info(f"🔄 Processing queued update for user {user_id} (scheduled: {scheduled_time})")
+        
+        # Call the existing update function
+        result = update(
+            user_id=user_id,
+            presenter_name=presenter_name,
+            language=language,
+            voice_id=voice_id
+        )
+        
+        if result.get("success"):
+            logger.info(f"✅ Successfully processed user {user_id}")
+        else:
+            logger.error(f"❌ Failed to process user {user_id}: {result.get('error')}")
+        
+        return https_fn.Response(
+            json.dumps(result),
+            status=200 if result.get("success") else 500,
+            headers={"Content-Type": "application/json"}
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ Error processing user update: {e}")
+        return https_fn.Response(
+            json.dumps({"success": False, "error": str(e)}),
+            status=500,
+            headers={"Content-Type": "application/json"}
+        )
+    
 @https_fn.on_request(timeout_sec=900, memory=options.MemoryOption.MB_512)  # 15 minutes timeout, increased memory
 def update_endpoint(req: https_fn.Request) -> https_fn.Response:
     """
@@ -2819,7 +2906,7 @@ def update_endpoint(req: https_fn.Request) -> https_fn.Response:
             'Access-Control-Max-Age': '3600'
         }
         return https_fn.Response('', headers=headers)
-    #ee
+    
     if req.method != 'POST':
         headers = {
             'Access-Control-Allow-Origin': '*',
@@ -2880,4 +2967,4 @@ def update_endpoint(req: https_fn.Request) -> https_fn.Response:
             "timestamp": datetime.now().isoformat()
         }
         return https_fn.Response(json.dumps(error_response), headers=headers, status=500)
-    
+

@@ -165,6 +165,7 @@ Generate the clean title now:"""
 def get_topic_summary(topic_name, topic_content_data):
     """
     Generate a comprehensive summary of all topic content with key facts from each article.
+    Now includes smooth source citations in the format <<url>> after relevant content.
     
     Args:
         topic_name (str): Name of the topic (e.g., "Business", "Technology")
@@ -187,7 +188,7 @@ def get_topic_summary(topic_name, topic_content_data):
         dict: Response with format:
             {
                 "success": True,
-                "topic_summary": "Comprehensive formatted summary with key facts...",
+                "topic_summary": "Comprehensive formatted summary with key facts and source citations...",
                 "topic_name": "Business",
                 "content_stats": {
                     "total_articles": 15,
@@ -248,23 +249,26 @@ def get_topic_summary(topic_name, topic_content_data):
                     all_content["reddit_discussions"][f"{subtopic_name} - r/{subreddit}"] = posts
                     content_stats["total_posts"] += len(posts)
         
-        # Prepare content for LLM analysis
+        # Prepare content for LLM analysis WITH URLS
         content_text = f"TOPIC: {topic_name}\n\n"
         
-        # Add topic headlines
+        # Add topic headlines with URLs
         if all_content["topic_headlines"]:
             content_text += "🔥 MAIN TOPIC HEADLINES:\n"
             for i, article in enumerate(all_content["topic_headlines"], 1):
                 title = article.get('title', 'No title')
                 snippet = article.get('snippet', article.get('description', ''))
                 source = article.get('source', 'Unknown source')
+                url = article.get('url', article.get('link', ''))
                 content_text += f"{i}. {title}\n"
                 content_text += f"   Source: {source}\n"
+                if url:
+                    content_text += f"   URL: {url}\n"
                 if snippet:
                     content_text += f"   Summary: {snippet}\n"
                 content_text += "\n"
         
-        # Add subtopic articles
+        # Add subtopic articles with URLs
         if all_content["subtopic_articles"]:
             content_text += "📊 SUBTOPIC ARTICLES:\n"
             for subtopic_name, articles in all_content["subtopic_articles"].items():
@@ -273,13 +277,16 @@ def get_topic_summary(topic_name, topic_content_data):
                     title = article.get('title', 'No title')
                     snippet = article.get('snippet', article.get('description', ''))
                     source = article.get('source', 'Unknown source')
+                    url = article.get('url', article.get('link', ''))
                     content_text += f"  {i}. {title}\n"
                     content_text += f"     Source: {source}\n"
+                    if url:
+                        content_text += f"     URL: {url}\n"
                     if snippet:
                         content_text += f"     Summary: {snippet}\n"
                 content_text += "\n"
         
-        # Add query-based articles
+        # Add query-based articles with URLs
         if all_content["query_articles"]:
             content_text += "🔍 QUERY-BASED ARTICLES:\n"
             for query_label, articles in all_content["query_articles"].items():
@@ -288,13 +295,16 @@ def get_topic_summary(topic_name, topic_content_data):
                     title = article.get('title', 'No title')
                     snippet = article.get('snippet', article.get('description', ''))
                     source = article.get('source', 'Unknown source')
+                    url = article.get('url', article.get('link', ''))
                     content_text += f"  {i}. {title}\n"
                     content_text += f"     Source: {source}\n"
+                    if url:
+                        content_text += f"     URL: {url}\n"
                     if snippet:
                         content_text += f"     Summary: {snippet}\n"
                 content_text += "\n"
         
-        # Add Reddit discussions
+        # Add Reddit discussions (no URLs needed for Reddit)
         if all_content["reddit_discussions"]:
             content_text += "💬 REDDIT DISCUSSIONS:\n"
             for subreddit_label, posts in all_content["reddit_discussions"].items():
@@ -308,7 +318,7 @@ def get_topic_summary(topic_name, topic_content_data):
                         content_text += f"     Content: {selftext[:200]}...\n"
                 content_text += "\n"
         
-        # Create LLM prompt for summary generation
+        # Create LLM prompt for summary generation WITH CITATION INSTRUCTIONS
         summary_prompt = f"""You are a professional news analyst creating clean, structured summaries. Create a concise summary of the {topic_name} topic based on the content below.
 
 INSTRUCTIONS:
@@ -319,6 +329,13 @@ INSTRUCTIONS:
 5. Focus on key facts and developments
 6. No excessive emojis or dramatic language
 7. Use simple bullet points and clear sections
+
+CITATION INSTRUCTIONS:
+8. When you mention facts from articles, add the source URL AFTER the final period of the sentence using format: <<URL>>
+9. ONLY add citations for article-based information (not Reddit discussions)
+10. Integrate citations smoothly into the text flow
+11. If multiple facts come from the same article, cite once at the end of that content
+12. Example: "Tesla reported 20% growth in Q3 deliveries. <<https://example.com/tesla-news>>"
 
 FORMATTING RULES FOR iOS:
 - Use double line breaks between sections
@@ -338,19 +355,21 @@ FORMAT STRUCTURE:
 **{topic_name} Summary**
 
 **[Your Dynamic Title 1 Based on Actual Content]**
-• [Brief fact 1]
-• [Brief fact 2]
+• [Brief fact 1 with citation if from article]. <<URL>>
+• [Brief fact 2 with citation if from article]. <<URL>>
 
 **[Your Dynamic Title 2 Based on Actual Content]**
-• [Relevant information]
+• [Relevant information with citation if from article]. <<URL>>
 
 **[Your Dynamic Title 3 Based on Actual Content]** (if needed)
-• [Important trends or developments]
+• [Important trends or developments with citation if from article]. <<URL>>
+
+IMPORTANT: Every URL citation must be enclosed with EXACTLY two angle brackets: <<URL>>
 
 CONTENT TO ANALYZE:
 {content_text}
 
-Generate the clean, professional summary now (MAX 100 WORDS):"""
+Generate the clean, professional summary now with properly formatted source citations (MAX 100 WORDS):"""
 
         # Get OpenAI client and generate response
         client = get_openai_client()
@@ -358,10 +377,10 @@ Generate the clean, professional summary now (MAX 100 WORDS):"""
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "You are a professional news analyst who creates clean, factual summaries with DYNAMIC section titles. Analyze the content and create specific, relevant section headers rather than using generic templates like 'Key Developments' or 'Market Impact'. Make section titles descriptive and specific to what's actually happening in the news. Use simple formatting, avoid excessive emojis, and focus on key facts. Keep summaries concise and professional."},
+                {"role": "system", "content": "You are a professional news analyst who creates clean, factual summaries with DYNAMIC section titles and smooth source citations. When mentioning facts from articles, immediately add the source URL in <<URL>> format. Analyze the content and create specific, relevant section headers. Use simple formatting, avoid excessive emojis, and focus on key facts. Keep summaries concise and professional."},
                 {"role": "user", "content": summary_prompt}
             ],
-            max_tokens=150,
+            max_tokens=600,  # Increased to accommodate citations and ensure completion
             temperature=0.4
         )
         
@@ -841,7 +860,7 @@ def get_topic_posts(topic_name, topic_data, lang="en", country="us"):
             }
     """
     try:
-        logger.info(f"Fetching posts for topic: {topic_name} with {len(topic_data)} subtopics")
+        logger.info(f"Fetchinxg pdosts for topdcic: {topic_name} with {len(topic_data)} subtopics")
         
         result = {
             "topic_headlines": [],
