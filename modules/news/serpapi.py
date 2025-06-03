@@ -59,13 +59,21 @@ def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_pe
             
             logger.info(f"🔍 {attempt_name}: '{query}' | {country}/{lang} | Max: {max_articles}")
             
-            gnews_result = search_gnews(
-                query=query,
-                gl=country,
-                hl=lang, 
-                max_articles=max_articles,
-                time_period=time_period
-            )
+            if country == None:
+                gnews_result = search_gnews(
+                    query=query,
+                    hl=lang, 
+                    max_articles=max_articles,
+                    time_period=time_period
+                )
+            else:
+                gnews_result = search_gnews(
+                    query=query,
+                    gl=country,
+                    hl=lang, 
+                    max_articles=max_articles,
+                    time_period=time_period
+                )
             
             articles = []
             if 'articles' in gnews_result and gnews_result['articles']:
@@ -92,9 +100,9 @@ def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_pe
         gnews_articles = _try_gnews_search(query, gl, hl, max_articles, time_period, "GNews (original)")
         time.sleep(1.5)
         # Step 1b: If no results and original country is not "us", try with "us"
-        if len(gnews_articles) == 0 and gl.lower() != "us":
+        if len(gnews_articles) == 0:
             logger.info(f"🔄 GNews original country '{gl}' returned no results, trying with US...")
-            gnews_articles_us = _try_gnews_search(query, "us", hl, max_articles, time_period, "GNews (US fallback)")
+            gnews_articles_us = _try_gnews_search(query, None, hl, max_articles, time_period, "GNews (US fallback)")
             gnews_articles = gnews_articles_us
             
             if len(gnews_articles) > 0:

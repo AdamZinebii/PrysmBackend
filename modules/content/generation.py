@@ -343,6 +343,7 @@ FORMATTING RULES FOR iOS:
 - Put each bullet point on its own line
 - Avoid complex markdown - keep it simple
 - Use **bold** only for section headers
+- Use ***bold*** (triple asterisks) for important words within paragraphs
 - CREATE YOUR OWN SECTION TITLES based on the actual content - don't use generic templates
 
 DYNAMIC FORMATTING INSTRUCTIONS:
@@ -350,19 +351,20 @@ DYNAMIC FORMATTING INSTRUCTIONS:
 - Section titles should be specific to the content, not generic like "Key Developments" or "Market Impact"
 - Examples of good dynamic titles: "AI Chip Shortage", "Federal Reserve Updates", "Tesla Production Changes", "European Energy Crisis", etc.
 - Make titles descriptive and specific to what's actually happening
+- Highlight key companies, numbers, or important terms within sentences using ***triple asterisks***
 
 FORMAT STRUCTURE:
 **{topic_name} Summary**
 
 **[Your Dynamic Title 1 Based on Actual Content]**
-• [Brief fact 1 with citation if from article]. <<URL>>
-• [Brief fact 2 with citation if from article]. <<URL>>
+• [Brief fact 1 with ***important words*** highlighted]. <<URL>>
+• [Brief fact 2 with ***key terms*** highlighted]. <<URL>>
 
 **[Your Dynamic Title 2 Based on Actual Content]**
-• [Relevant information with citation if from article]. <<URL>>
+• [Relevant information with ***significant details*** highlighted]. <<URL>>
 
 **[Your Dynamic Title 3 Based on Actual Content]** (if needed)
-• [Important trends or developments with citation if from article]. <<URL>>
+• [Important trends with ***crucial data*** highlighted]. <<URL>>
 
 IMPORTANT: Every URL citation must be enclosed with EXACTLY two angle brackets: <<URL>>
 
@@ -551,16 +553,18 @@ FORMATTING RULES FOR iOS:
 - Use double line breaks (\\n\\n) between sections
 - Use • for bullet points (not dashes or asterisks)
 - Put each bullet point on its own line
-- Use simple bold formatting: **text**
+- Use **bold** for section headers
+- Use ***bold*** (triple asterisks) for important words within paragraphs
+- Highlight key companies, numbers, countries, or important terms using ***triple asterisks***
 - Avoid complex markdown formatting
 - Ensure proper spacing between elements
 
 FORMAT:
 **Key Developments:**
 
-• [Major trend/event 1]
+• [Major trend/event 1 with ***important details*** highlighted]
 
-• [Major trend/event 2]
+• [Major trend/event 2 with ***key information*** highlighted]
 
 REDDIT DISCUSSIONS TO ANALYZE:
 {content_text}
