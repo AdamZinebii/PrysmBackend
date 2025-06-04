@@ -1,81 +1,28 @@
-#!/usr/bin/env python3
-"""
-Quick test script to verify Firebase Functions setup.
-"""
 
-import sys
-import os
+import torch
+import torchaudio as ta
+from chatterbox.tts import ChatterboxTTS
 
-def test_imports():
-    """Test that all critical imports work."""
-    try:
-        # Core Firebase Functions
-        from firebase_functions import https_fn
-        from firebase_admin import initialize_app, firestore
-        
-        # AI APIs
-        import openai
-        import serpapi
-        from elevenlabs import ElevenLabs
-        
-        # Other critical dependencies
-        import feedparser
-        import requests
-        import newspaper
-        import nltk
-        
-        print("✅ All imports successful")
-        return True
-    except ImportError as e:
-        print(f"❌ Import error: {e}")
-        return False
+# Detect device (Mac with M1/M2/M3/M4)
+device = "cpu"
+map_location = torch.device(device)
 
-def test_main_module():
-    """Test that main.py can be imported."""
-    try:
-        import main
-        print("✅ main.py imports successfully")
-        
-        # Test a few key functions exist
-        functions = [
-            'health_check',
-            'build_system_prompt', 
-            'gnews_search',
-            'generate_ai_response'
-        ]
-        
-        for func_name in functions:
-            if hasattr(main, func_name):
-                print(f"✅ Function {func_name} exists")
-            else:
-                print(f"❌ Function {func_name} missing")
-                return False
-        
-        return True
-    except Exception as e:
-        print(f"❌ Error importing main.py: {e}")
-        return False
+torch_load_original = torch.load
+def patched_torch_load(*args, **kwargs):
+    if 'map_location' not in kwargs:
+        kwargs['map_location'] = map_location
+    return torch_load_original(*args, **kwargs)
 
-def main():
-    """Run all tests."""
-    print("🧪 Testing Firebase Functions Setup")
-    print("=" * 40)
-    
-    # Test Python version
-    print(f"🐍 Python version: {sys.version}")
-    print(f"📁 Current directory: {os.getcwd()}")
-    
-    # Run tests
-    imports_ok = test_imports()
-    main_ok = test_main_module()
-    
-    print("\n" + "=" * 40)
-    if imports_ok and main_ok:
-        print("🎉 All tests passed! Firebase Functions ready!")
-        return 0
-    else:
-        print("❌ Some tests failed. Check the output above.")
-        return 1
+torch.load = patched_torch_load
 
-if __name__ == "__main__":
-    sys.exit(main()) 
+model = ChatterboxTTS.from_pretrained(device=device)
+text = "Today is the day. I want to move like a titan at dawn, sweat like a god forging lightning. No more excuses. From now on, my mornings will be temples of discipline. I am going to work out like the gods… every damn day."
+
+# If you want to synthesize with a different voice, specify the audio prompt
+AUDIO_PROMPT_PATH = "YOUR_FILE.wav"
+wav = model.generate(
+    text, 
+    exaggeration=0.5,
+    cfg_weight=0.5
+    )
+ta.save("test-2.wav", wav, model.sr)

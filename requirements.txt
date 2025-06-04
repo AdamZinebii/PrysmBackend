@@ -29,3 +29,4 @@ python-dotenv>=1.0.0
 functions-framework==3.*
 google-cloud-firestore
 google-cloud-logging 
+pydub

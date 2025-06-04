@@ -152,7 +152,7 @@ def get_articles_subtopics_user(subtopic_name, subtopic_data, lang="en", country
             query=subtopic_name,
             lang=lang,
             country=country,
-            max_articles=2,
+            max_articles=4,
             from_date=(datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
         )
         
@@ -165,7 +165,7 @@ def get_articles_subtopics_user(subtopic_name, subtopic_data, lang="en", country
                 logger.warning(f"GNews quota exceeded for subtopic '{subtopic_name}'. Queries will return empty results.")
         
         if subtopic_response.get("success") and subtopic_response.get("articles"):
-            result[subtopic_name] = format_gnews_articles_for_prysm(subtopic_response)[:2]
+            result[subtopic_name] = format_gnews_articles_for_prysm(subtopic_response)[:4]
             logger.info(f"Found {len(result[subtopic_name])} articles for subtopic name")
         else:
             logger.warning(f"No articles found for subtopic name: {subtopic_name}")
@@ -194,7 +194,7 @@ def get_articles_subtopics_user(subtopic_name, subtopic_data, lang="en", country
                 query=query,
                 lang=lang,
                 country=country,
-                max_articles=2,
+                max_articles=4,
                 from_date=(datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
             )
             
@@ -373,7 +373,7 @@ def get_articles_subtopics_user_with_comments(subtopic_name, subtopic_data, lang
             query=subtopic_name,
             lang=lang,
             country=country,
-            max_articles=2,
+            max_articles=4,
             from_date=(datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
         )
         
@@ -415,7 +415,7 @@ def get_articles_subtopics_user_with_comments(subtopic_name, subtopic_data, lang
                 query=query,
                 lang=lang,
                 country=country,
-                max_articles=2,
+                max_articles=4,
                 from_date=(datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
             )
             

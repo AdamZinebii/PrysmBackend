@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 SERPAPI_API_KEY_HARDCODED = "08ef5c4be14a2d80d5f0036ca726cb8f02e4428ceba23348ac04595a766327a3"
 GNEWS_API_KEY = "75807d7923a12e3d80d64c971ff340da"
 GNEWS_BASE_URL = "https://gnews.io/api/v4"
+NEWSAPI_API_KEY = "31c5260ea92b400ca4972424b8a1f12b"  # Remplacez par votre vraie clé NewsAPI
 
 # Country mapping (extrait de main.py)
 COUNTRY_NAME_TO_CODE = {
@@ -76,4 +77,12 @@ def get_cartesia_key():
     if key:
         return key
     logger.warning("CARTESIA_API_KEY not found in env, using fallback key")
-    return "sk_car_fygBZkHQCaWQDUtWjBjcxc" 
+    return "sk_car_fygBZkHQCaWQDUtWjBjcxc"
+
+def get_newsapi_key():
+    """Retrieve NewsAPI key from environment or use hardcoded fallback."""
+    key = os.environ.get("NEWSAPI_API_KEY")
+    if key:
+        return key
+    logger.warning("NEWSAPI_API_KEY not found in env, using fallback key")
+    return NEWSAPI_API_KEY 

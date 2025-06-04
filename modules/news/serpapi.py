@@ -19,7 +19,10 @@ import requests
 
 def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_period=None, topic_token=None):
     """
-    Search Google News using GNews API first (with US fallback), then SerpAPI as fallback.
+    Search Google News using multi-tier fallback strategy:
+    1. GNews API first (with US fallback)
+    2. NewsAPI for 48h articles to complement
+    3. SerpAPI as final fallback
     
     Args:
         query (str): Search query (can be None for homepage/category browsing)
@@ -50,6 +53,26 @@ def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_pe
             }
         except Exception as e:
             logger.error(f"❌ Error parsing GNews article: {e}")
+            return None
+
+    def _parse_newsapi_article(newsapi_article):
+        """Convert NewsAPI article to standard format for consistency."""
+        try:
+            source_info = newsapi_article.get("source", {})
+            return {
+                "title": newsapi_article.get("title", ""),
+                "description": newsapi_article.get("description", ""),
+                "content": newsapi_article.get("content", ""),
+                "url": newsapi_article.get("url", ""),
+                "image": newsapi_article.get("urlToImage", ""),
+                "publishedAt": newsapi_article.get("publishedAt", ""),
+                "source": {
+                    "name": source_info.get("name", "Unknown"),
+                    "url": ""  # NewsAPI doesn't provide source URL
+                }
+            }
+        except Exception as e:
+            logger.error(f"❌ Error parsing NewsAPI article: {e}")
             return None
 
     def _try_gnews_search(query, country, lang, max_articles, time_period, attempt_name):
@@ -91,6 +114,84 @@ def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_pe
         except Exception as e:
             logger.warning(f"⚠️ {attempt_name} failed: {e}")
             return []
+
+    def _try_newsapi_search(query, lang, articles_needed, attempt_name):
+        """Helper function to try NewsAPI search for 48h articles."""
+        try:
+            from ..config import get_newsapi_key
+            import requests
+            from datetime import datetime, timedelta
+            
+            logger.info(f"🔍 {attempt_name}: '{query}' | {lang} | Max: {articles_needed}")
+            
+            # Calculate 48h period for NewsAPI
+            now = datetime.utcnow()
+            from_date = now - timedelta(hours=48)
+            from_iso = from_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+            to_iso = now.strftime('%Y-%m-%dT%H:%M:%SZ')
+            
+            # Direct NewsAPI call
+            api_key = get_newsapi_key()
+            url = "https://newsapi.org/v2/everything"
+            params = {
+                'apiKey': api_key,
+                'q': query,
+                'from': from_iso,
+                'to': to_iso,
+                'language': lang,
+                'sortBy': 'publishedAt',
+                'pageSize': min(articles_needed, 100)  # NewsAPI max is 100
+            }
+            
+            response = requests.get(url, params=params, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                newsapi_articles = data.get('articles', [])
+                
+                # Convert NewsAPI articles to our standard format
+                articles = []
+                for newsapi_article in newsapi_articles[:articles_needed]:
+                    # Enhanced parsing with author and better source handling
+                    source_info = newsapi_article.get("source", {})
+                    
+                    standard_article = {
+                        "title": newsapi_article.get("title", ""),
+                        "description": newsapi_article.get("description", ""),
+                        "content": newsapi_article.get("content", ""),
+                        "url": newsapi_article.get("url", ""),
+                        "image": newsapi_article.get("urlToImage", ""),
+                        "publishedAt": newsapi_article.get("publishedAt", ""),
+                        "source": {
+                            "name": source_info.get("name", "Unknown"),
+                            "url": "",  # NewsAPI doesn't provide source URL
+                            "id": source_info.get("id", "")  # Include source ID from NewsAPI
+                        },
+                        "author": newsapi_article.get("author", "")  # Include author from NewsAPI
+                    }
+                    
+                    # Only add articles with minimum required fields
+                    if standard_article["title"] and standard_article["url"]:
+                        articles.append(standard_article)
+                
+                logger.info(f"✅ {attempt_name}: Found {len(articles)} articles")
+                return articles
+                
+            elif response.status_code == 401:
+                logger.warning(f"⚠️ {attempt_name}: Invalid API key")
+                return []
+                
+            elif response.status_code == 429:
+                logger.warning(f"⚠️ {attempt_name}: Rate limit exceeded")
+                return []
+                
+            else:
+                logger.warning(f"⚠️ {attempt_name}: HTTP {response.status_code}")
+                return []
+                
+        except Exception as e:
+            logger.warning(f"⚠️ {attempt_name} failed: {e}")
+            return []
     
     # Step 1: Try GNews first (skip if topic_token is provided, as GNews doesn't support it)
     gnews_articles = []
@@ -110,7 +211,7 @@ def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_pe
         
         # If we have enough articles from GNews (either original or US fallback), return them
         if len(gnews_articles) >= max_articles:
-            logger.info(f"🎯 GNews provided enough articles ({len(gnews_articles)}>={max_articles}), skipping SerpAPI")
+            logger.info(f"🎯 GNews provided enough articles ({len(gnews_articles)}>={max_articles}), skipping NewsAPI and SerpAPI")
             return {
                 "success": True,
                 "totalArticles": max_articles,
@@ -124,26 +225,75 @@ def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_pe
                 "used_us_fallback": gl.lower() != "us" and len(gnews_articles) > 0
             }
     
+    # Step 1.5: Try NewsAPI for 48h articles to complement GNews results
+    newsapi_articles = []
+    articles_needed_for_newsapi = max_articles - len(gnews_articles)
+    
+    if articles_needed_for_newsapi > 0 and query:  # NewsAPI requires a query
+        logger.info(f"🔄 GNews provided {len(gnews_articles)} articles, trying NewsAPI for {articles_needed_for_newsapi} more")
+        newsapi_articles = _try_newsapi_search(query, hl, articles_needed_for_newsapi, "NewsAPI (48h complement)")
+        
+        # Check if we now have enough articles
+        total_articles_so_far = len(gnews_articles) + len(newsapi_articles)
+        if total_articles_so_far >= max_articles:
+            logger.info(f"🎯 GNews + NewsAPI provided enough articles ({total_articles_so_far}>={max_articles}), skipping SerpAPI")
+            all_articles = (gnews_articles + newsapi_articles)[:max_articles]
+            
+            # Determine source
+            if len(gnews_articles) > 0 and len(newsapi_articles) > 0:
+                source = "gnews_and_newsapi"
+            elif len(gnews_articles) > 0:
+                source = "gnews_only"
+            else:
+                source = "newsapi_only"
+            
+            return {
+                "success": True,
+                "totalArticles": len(all_articles),
+                "articles": all_articles,
+                "serpapi_data": {
+                    "related_topics": [],
+                    "menu_links": [],
+                    "topic_token": topic_token
+                },
+                "source": source,
+                "gnews_count": len(gnews_articles),
+                "newsapi_count": len(newsapi_articles),
+                "used_us_fallback": gl.lower() != "us" and len(gnews_articles) > 0
+            }
+
     # Step 2: Calculate how many more articles we need from SerpAPI
-    articles_needed = max_articles - len(gnews_articles)
+    articles_needed = max_articles - len(gnews_articles) - len(newsapi_articles)
     
     if articles_needed <= 0:
-        # We already have enough from GNews
+        # We already have enough from GNews + NewsAPI
+        all_articles = (gnews_articles + newsapi_articles)[:max_articles]
+        
+        # Determine source
+        if len(gnews_articles) > 0 and len(newsapi_articles) > 0:
+            source = "gnews_and_newsapi"
+        elif len(gnews_articles) > 0:
+            source = "gnews_only"
+        else:
+            source = "newsapi_only"
+            
         return {
             "success": True,
-            "totalArticles": max_articles,
-            "articles": gnews_articles[:max_articles],
+            "totalArticles": len(all_articles),
+            "articles": all_articles,
             "serpapi_data": {
                 "related_topics": [],
                 "menu_links": [],
                 "topic_token": topic_token
             },
-            "source": "gnews_only",
+            "source": source,
+            "gnews_count": len(gnews_articles),
+            "newsapi_count": len(newsapi_articles),
             "used_us_fallback": gl.lower() != "us" and len(gnews_articles) > 0
         }
     
     # Step 3: Fetch remaining articles from SerpAPI
-    logger.info(f"🔄 GNews provided {len(gnews_articles)} articles, fetching {articles_needed} more from SerpAPI")
+    logger.info(f"🔄 GNews ({len(gnews_articles)}) + NewsAPI ({len(newsapi_articles)}) provided {len(gnews_articles) + len(newsapi_articles)} articles, fetching {articles_needed} more from SerpAPI")
     
     api_key = get_serpapi_key()
     
@@ -164,11 +314,7 @@ def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_pe
     if query:
         params["q"] = query
     
-    # Add time period filter if provided
-    if time_period:
-        params["when"] = time_period
-        logger.info(f"🕒 Time filter: {time_period}")
-    
+   
     # Add topic token if provided (for category browsing)
     if topic_token:
         params["topic_token"] = topic_token
@@ -178,7 +324,8 @@ def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_pe
         response = requests.get(url, params=params, timeout=30)
         
         if response.status_code == 200:
-            data = response.json()
+            data_nofilter = response.json()
+            data = filter_news_last_24_hours(data_nofilter)
             serpapi_articles = []
             
             # Parse articles from different possible response structures
@@ -208,16 +355,19 @@ def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_pe
             
             logger.info(f"✅ SerpAPI: Found {len(serpapi_articles)} additional articles")
             
-            # Step 4: Combine GNews and SerpAPI articles
-            all_articles = (gnews_articles + serpapi_articles)[:max_articles]
+            # Step 4: Combine GNews, NewsAPI and SerpAPI articles
+            all_articles = (gnews_articles + newsapi_articles + serpapi_articles)[:max_articles]
             
             # Determine the source
-            if len(gnews_articles) > 0 and len(serpapi_articles) > 0:
-                source = "gnews_and_serpapi"
-            elif len(gnews_articles) > 0:
-                source = "gnews_only" 
-            else:
-                source = "serpapi_only"
+            sources_used = []
+            if len(gnews_articles) > 0:
+                sources_used.append("gnews")
+            if len(newsapi_articles) > 0:
+                sources_used.append("newsapi")
+            if len(serpapi_articles) > 0:
+                sources_used.append("serpapi")
+            
+            source = "_and_".join(sources_used) if sources_used else "none"
             
             return {
                 "success": True,
@@ -230,16 +380,26 @@ def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_pe
                 },
                 "source": source,
                 "gnews_count": len(gnews_articles),
+                "newsapi_count": len(newsapi_articles),
                 "serpapi_count": len(serpapi_articles),
                 "used_us_fallback": gl.lower() != "us" and len(gnews_articles) > 0
             }
         
         elif response.status_code == 401:
             logger.error("❌ SerpAPI: Invalid API key")
-            # If SerpAPI fails but we have some GNews articles, return those
-            if gnews_articles:
-                final_articles = gnews_articles[:max_articles]
-                logger.info(f"🔄 SerpAPI failed, returning {len(final_articles)} GNews articles")
+            # If SerpAPI fails but we have some articles from GNews/NewsAPI, return those
+            if gnews_articles or newsapi_articles:
+                final_articles = (gnews_articles + newsapi_articles)[:max_articles]
+                
+                # Determine source for fallback
+                sources_used = []
+                if len(gnews_articles) > 0:
+                    sources_used.append("gnews")
+                if len(newsapi_articles) > 0:
+                    sources_used.append("newsapi")
+                source = "_and_".join(sources_used) if sources_used else "none"
+                
+                logger.info(f"🔄 SerpAPI failed, returning {len(final_articles)} articles from {source}")
                 return {
                     "success": True,
                     "totalArticles": len(final_articles),
@@ -249,22 +409,33 @@ def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_pe
                         "menu_links": [],
                         "topic_token": topic_token
                     },
-                    "source": "gnews_only",
+                    "source": source,
+                    "gnews_count": len(gnews_articles),
+                    "newsapi_count": len(newsapi_articles),
                     "used_us_fallback": gl.lower() != "us" and len(gnews_articles) > 0
                 }
             else:
                 return {
                     "success": False,
-                    "error": "SerpAPI authentication failed and no GNews articles available",
+                    "error": "SerpAPI authentication failed and no articles available from other sources",
                     "totalArticles": 0,
                     "articles": []
                 }
         else:
             logger.error(f"❌ SerpAPI: HTTP {response.status_code}")
-            # Return GNews articles if available, even if SerpAPI fails
-            if gnews_articles:
-                final_articles = gnews_articles[:max_articles]
-                logger.info(f"🔄 SerpAPI error, returning {len(final_articles)} GNews articles")
+            # Return articles from GNews/NewsAPI if available, even if SerpAPI fails
+            if gnews_articles or newsapi_articles:
+                final_articles = (gnews_articles + newsapi_articles)[:max_articles]
+                
+                # Determine source for fallback
+                sources_used = []
+                if len(gnews_articles) > 0:
+                    sources_used.append("gnews")
+                if len(newsapi_articles) > 0:
+                    sources_used.append("newsapi")
+                source = "_and_".join(sources_used) if sources_used else "none"
+                
+                logger.info(f"🔄 SerpAPI error, returning {len(final_articles)} articles from {source}")
                 return {
                     "success": True,
                     "totalArticles": len(final_articles),
@@ -274,7 +445,9 @@ def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_pe
                         "menu_links": [],
                         "topic_token": topic_token
                     },
-                    "source": "gnews_only",
+                    "source": source,
+                    "gnews_count": len(gnews_articles),
+                    "newsapi_count": len(newsapi_articles),
                     "used_us_fallback": gl.lower() != "us" and len(gnews_articles) > 0
                 }
             else:
@@ -287,10 +460,19 @@ def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_pe
                 
     except Exception as e:
         logger.error(f"❌ SerpAPI request failed: {e}")
-        # Return GNews articles if available
-        if gnews_articles:
-            final_articles = gnews_articles[:max_articles]
-            logger.info(f"🔄 SerpAPI exception, returning {len(final_articles)} GNews articles")
+        # Return articles from GNews/NewsAPI if available
+        if gnews_articles or newsapi_articles:
+            final_articles = (gnews_articles + newsapi_articles)[:max_articles]
+            
+            # Determine source for fallback
+            sources_used = []
+            if len(gnews_articles) > 0:
+                sources_used.append("gnews")
+            if len(newsapi_articles) > 0:
+                sources_used.append("newsapi")
+            source = "_and_".join(sources_used) if sources_used else "none"
+            
+            logger.info(f"🔄 SerpAPI exception, returning {len(final_articles)} articles from {source}")
             return {
                 "success": True,
                 "totalArticles": len(final_articles),
@@ -300,7 +482,9 @@ def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_pe
                     "menu_links": [],
                     "topic_token": topic_token
                 },
-                "source": "gnews_only",
+                "source": source,
+                "gnews_count": len(gnews_articles),
+                "newsapi_count": len(newsapi_articles),
                 "used_us_fallback": gl.lower() != "us" and len(gnews_articles) > 0
             }
         else:
@@ -363,21 +547,21 @@ def gnews_search(query, lang="en", country="us", max_articles=10, from_date=None
     )
     
     # If no articles found and we had a time filter, try without time filter as fallback
-    if result.get('success') and result.get('totalArticles', 0) == 0 and time_period:
-        logger.info(f"🔄 Google News Search: No articles found with time filter, trying without time filter")
-        fallback_result = serpapi_google_news_search(
-            query=query,
-            gl=gl,
-            hl=hl,
-            max_articles=max_articles,
-            time_period=None
-        )
+    # if result.get('success') and result.get('totalArticles', 0) == 0 and time_period:
+    #     logger.info(f"🔄 Google News Search: No articles found with time filter, trying without time filter")
+    #     fallback_result = serpapi_google_news_search(
+    #         query=query,
+    #         gl=gl,
+    #         hl=hl,
+    #         max_articles=max_articles,
+    #         time_period=None
+    #     )
         
-        if fallback_result.get('success') and fallback_result.get('totalArticles', 0) > 0:
-            logger.info(f"✅ Google News Search: Fallback successful - found {fallback_result.get('totalArticles', 0)} articles")
-            fallback_result['used_fallback'] = True
-            fallback_result['original_time_period'] = time_period
-            return fallback_result
+    #     if fallback_result.get('success') and fallback_result.get('totalArticles', 0) > 0:
+    #         logger.info(f"✅ Google News Search: Fallback successful - found {fallback_result.get('totalArticles', 0)} articles")
+    #         fallback_result['used_fallback'] = True
+    #         fallback_result['original_time_period'] = time_period
+    #         return fallback_result
     
     return result
 
@@ -635,3 +819,56 @@ Summary:"""
     except Exception as e:
         logger.error(f"❌ Error summarizing article: {e}")
         return "" 
+    
+
+import re
+from datetime import datetime, timedelta, timezone
+import dateutil.parser
+import copy
+
+def filter_news_last_24_hours(response):
+    if hasattr(response, 'json'):
+        data = response.json()
+    elif isinstance(response, dict):
+        data = response
+    else:
+        raise TypeError("Unsupported response type")
+
+    # Extract the reference time from the SerpAPI response
+    processed_at = data.get("search_metadata", {}).get("processed_at")
+    if not processed_at:
+        raise ValueError("Missing 'processed_at' in search_metadata")
+
+    # Convert processed_at to datetime with UTC timezone
+    reference_time = dateutil.parser.parse(processed_at + " +0000").astimezone(timezone.utc)
+    time_window = timedelta(hours=24)
+
+    def clean_date_string(date_str):
+        # Remove trailing timezone name (e.g., "UTC") after numeric offset
+        return re.sub(r'(\+\d{4})\s+\w+$', r'\1', date_str.strip())
+
+    filtered_data = copy.deepcopy(data)
+    filtered_data["news_results"] = []
+
+    for news_item in data.get("news_results", []):
+        try:
+            raw_date = news_item.get("highlight", {}).get("date") or news_item.get("date")
+            parsed_date = dateutil.parser.parse(clean_date_string(raw_date)).astimezone(timezone.utc)
+        except Exception:
+            continue
+
+        if reference_time - parsed_date <= time_window:
+            filtered_stories = []
+            for story in news_item.get("stories", []):
+                try:
+                    story_date = dateutil.parser.parse(clean_date_string(story["date"])).astimezone(timezone.utc)
+                    if reference_time - story_date <= time_window:
+                        filtered_stories.append(copy.deepcopy(story))
+                except Exception:
+                    continue
+
+            news_copy = copy.deepcopy(news_item)
+            news_copy["stories"] = filtered_stories
+            filtered_data["news_results"].append(news_copy)
+
+    return filtered_data

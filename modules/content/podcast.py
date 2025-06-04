@@ -17,6 +17,7 @@ from modules.ai.client import get_openai_client
 from modules.audio.cartesia import generate_text_to_speech
 from modules.content.generation import get_complete_topic_report, get_pickup_line, get_reddit_community_insights, get_topic_summary
 from modules.database.operations import get_user_articles_from_db
+from modules.audio.openai_tts import generate_text_to_speech_openai
 
 logger.info("--- main.py: Logging configured ---")
 
@@ -770,7 +771,7 @@ IMPORTANT: Couvre chaque article fourni - n'en laisse aucun de côté. Mentionne
         else:
             system_prompt = """You are a friendly podcast host creating a conversational news briefing script. Your tone should be casual, engaging, and informative - like telling a friend about interesting news you've discovered.
 
-Generate a 4-6 minute podcast script based on ALL the provided articles, organized by topics and subtopics.
+Generate a 10-12 minute podcast (1300-1400 words) script based on ALL the provided articles, organized by topics and subtopics.
 
 IMPORTANT: Write ONLY the text to be read aloud - NO stage directions like [intro], [outro], [pause], etc. The script should be pure text, flowing and readable directly.
 
@@ -807,7 +808,7 @@ IMPORTANT: Cover every single article provided - don't leave any out. Mention ev
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=messages,
-            max_tokens=2000,  # Enough for a 4-6 minute script
+            max_tokens=6000,  # Enough for a 4-6 minute script
             temperature=0.7
         )
         
@@ -962,12 +963,14 @@ def generate_simple_podcast(user_id, presenter_name="Alex", language="en", voice
         logger.info(f"🔊 Step 2/3: Converting script to audio with ElevenLabs...")
         logger.info(f"📊 About to convert {len(script_content)} characters to audio")
         
-        audio_bytes = generate_text_to_speech(
-            text=script_content,
-            voice_id=voice_id,
-            model_id="sonic-2",
-            language=language
-        )
+        # audio_bytes = generate_text_to_speech(
+        #     text=script_content,
+        #     voice_id=voice_id,
+        #     model_id="sonic-2",
+        #     language=language
+        # )
+        audio_bytes = generate_text_to_speech_openai(
+             text=script_content)
         
         logger.info(f"🔍 Audio generation result: audio_bytes is {'None' if audio_bytes is None else f'{len(audio_bytes)} bytes'}")
         
