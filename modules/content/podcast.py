@@ -771,25 +771,43 @@ IMPORTANT: Couvre chaque article fourni - n'en laisse aucun de côté. Mentionne
         else:
             system_prompt = """You are a friendly podcast host creating a conversational news briefing script. Your tone should be casual, engaging, and informative - like telling a friend about interesting news you've discovered.
 
-Generate a 10-12 minute podcast (1300-1400 words) script based on ALL the provided articles, organized by topics and subtopics.
+Generate a 10-12 minute podcast (1500-1700 words) script based on ALL the provided articles, organized by topics and subtopics.
 
-IMPORTANT: Write ONLY the text to be read aloud - NO stage directions like [intro], [outro], [pause], etc. The script should be pure text, flowing and readable directly.
+CRITICAL FORMATTING REQUIREMENT:
+Structure your script with clear article-based sections using this EXACT format:
 
-Style Guidelines:
-- Conversational and natural (as if talking to a friend)
-- Use transitions like "Speaking of...", "Oh, and here's something interesting...", "You know what caught my eye?"
+INTRO:
+[Your welcoming introduction text here]
+
+<<articlelink1>>:
+[Content discussing this specific article]
+
+<<articlelink2>>:
+[Content discussing this specific article]
+
+<<articlelink3>>:
+[Content discussing this specific article]
+
+[Continue for ALL articles...]
+
+CONCLUSION:
+[Your closing remarks]
+
+IMPORTANT RULES:
+- Write ONLY the text to be read aloud - NO stage directions like [intro], [outro], [pause], etc.
+- Each article section should flow naturally when read consecutively
+- Use natural transitions between articles ("Speaking of...", "Oh, and here's something interesting...", "You know what caught my eye?")
 - Include personal reactions/commentary ("This is pretty wild...", "I found this fascinating...")
 - Keep it engaging but informative
 - Use source names to add credibility
-- Start with a natural welcome, end with a natural conclusion
-- No timestamps or technical instructions
+- When article links are removed, the script should flow as one continuous, natural conversation
+- Cover every single article provided - don't leave any out
+- Write ONLY what needs to be spoken aloud
 
-Natural flow:
-- Start with a warm welcome and overview of topics
-- Naturally transition from one topic to another with smooth transitions
-- End with a natural and engaging conclusion
+The script must work both as:
+1. Structured sections (with article links as headers)
+2. One flowing conversation (when article links are removed)"""
 
-IMPORTANT: Cover every single article provided - don't leave any out. Mention every article title. Write ONLY what needs to be spoken aloud."""
 
         # Fodrmat the articles data as a clean JSON string
         user_message = f"Here's the news data to create a podcast script for:\n\n{json.dumps(topics_data, indent=2)}"
@@ -963,14 +981,14 @@ def generate_simple_podcast(user_id, presenter_name="Alex", language="en", voice
         logger.info(f"🔊 Step 2/3: Converting script to audio with ElevenLabs...")
         logger.info(f"📊 About to convert {len(script_content)} characters to audio")
         
-        # audio_bytes = generate_text_to_speech(
-        #     text=script_content,
-        #     voice_id=voice_id,
-        #     model_id="sonic-2",
-        #     language=language
-        # )
-        audio_bytes = generate_text_to_speech_openai(
-             text=script_content)
+        audio_bytes = generate_text_to_speech(
+            text=script_content,
+            voice_id=voice_id,
+            model_id="sonic-2",
+            language=language
+        )
+        # audio_bytes = generate_text_to_speech_openai(
+        #      text=script_content)
         
         logger.info(f"🔍 Audio generation result: audio_bytes is {'None' if audio_bytes is None else f'{len(audio_bytes)} bytes'}")
         

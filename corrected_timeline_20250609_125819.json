@@ -1,0 +1,52 @@
+{
+  "0.0-14.3": {
+    "section_name": "INTRO",
+    "article_id": null,
+    "start_seconds": 0.0,
+    "end_seconds": 14.326712,
+    "duration_seconds": 14.326712,
+    "word_count": 44,
+    "content_preview": "Hey there! Welcome to your personalized tech briefing. I'm Alex, and today we've got some fascinatin...",
+    "chunk_file": "chunk_01_INTRO_20250609_125819.wav"
+  },
+  "14.3-43.0": {
+    "section_name": "<<article1>>",
+    "article_id": "<<article1>>",
+    "start_seconds": 14.326712,
+    "end_seconds": 43.003356,
+    "duration_seconds": 28.676644,
+    "word_count": 75,
+    "content_preview": "Speaking of artificial intelligence, OpenAI just dropped some major news about GPT-5 development. Ac...",
+    "chunk_file": "chunk_02_article1_20250609_125819.wav"
+  },
+  "43.0-70.1": {
+    "section_name": "<<article2>>",
+    "article_id": "<<article2>>",
+    "start_seconds": 43.003356,
+    "end_seconds": 70.054603,
+    "duration_seconds": 27.051247,
+    "word_count": 82,
+    "content_preview": "Oh, and here's something that caught my eye from the startup world. European fintech company Revolut...",
+    "chunk_file": "chunk_03_article2_20250609_125819.wav"
+  },
+  "70.1-100.5": {
+    "section_name": "<<article3>>",
+    "article_id": "<<article3>>",
+    "start_seconds": 70.054603,
+    "end_seconds": 100.495964,
+    "duration_seconds": 30.441361,
+    "word_count": 89,
+    "content_preview": "You know what's been making waves on Reddit? This whole drama around Binance's new trading fees. The...",
+    "chunk_file": "chunk_04_article3_20250609_125819.wav"
+  },
+  "100.5-124.2": {
+    "section_name": "<<article4>>",
+    "article_id": "<<article4>>",
+    "start_seconds": 100.495964,
+    "end_seconds": 124.249978,
+    "duration_seconds": 23.754014,
+    "word_count": 84,
+    "content_preview": "Here's something from the climate tech space that's really exciting. According to Bloomberg, Swedish...",
+    "chunk_file": "chunk_05_CONCLUSION_20250609_125819.wav"
+  }
+}

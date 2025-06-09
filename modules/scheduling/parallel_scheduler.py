@@ -13,10 +13,16 @@ class ParallelScheduler:
     Processes multiple users concurrently with configurable limits.
     """
     
-    def __init__(self, max_concurrent_users: int = 5, rate_limit_per_minute: int = 20):
+    def __init__(self, max_concurrent_users: int = 5, rate_limit_per_minute: int = 20, excluded_users: List[str] = None):
         self.max_concurrent_users = max_concurrent_users
         self.rate_limit_per_minute = rate_limit_per_minute
         self.executor = ThreadPoolExecutor(max_workers=max_concurrent_users)
+        # List of user IDs that should not receive updates
+        self.excluded_users = excluded_users or [
+            'sSfQ60MEMYaO3444CIOCDegORbi2',
+            '3wcObJsVuqaNcrIn8VIwazwfBPv2',
+            'wrqDH8cDA2XCBK46O4JcIUza9x33'
+        ]
     
     def schedule_user_updates_parallel(self) -> dict:
         """
@@ -103,6 +109,7 @@ class ParallelScheduler:
     def _get_users_needing_updates(self, db, current_time: datetime) -> List[Dict]:
         """Get list of users who need updates"""
         users_to_update = []
+        excluded_count = 0
         
         scheduling_ref = db.collection('scheduling_preferences')
         all_schedules = scheduling_ref.stream()
@@ -111,11 +118,20 @@ class ParallelScheduler:
             user_id = doc.id
             scheduling_prefs = doc.to_dict()
             
+            # Check if user is in exclusion list
+            if user_id in self.excluded_users:
+                logger.info(f"🚫 Skipping excluded user: {user_id}")
+                excluded_count += 1
+                continue
+            
             if self._should_trigger_update(user_id, scheduling_prefs, current_time):
                 users_to_update.append({
                     'user_id': user_id,
                     'preferences': scheduling_prefs
                 })
+        
+        if excluded_count > 0:
+            logger.info(f"📋 Excluded {excluded_count} users from updates")
         
         return users_to_update
     

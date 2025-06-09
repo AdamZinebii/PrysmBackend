@@ -42,7 +42,7 @@ def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_pe
             return {
                 "title": gnews_article.get("title", ""),
                 "description": gnews_article.get("description", ""),
-                "content": gnews_article.get("content", ""),
+                "content": summarize_article_content(gnews_article.get("content", "")),
                 "url": gnews_article.get("url", ""),
                 "image": gnews_article.get("image", ""),
                 "publishedAt": gnews_article.get("publishedAt", ""),
@@ -88,6 +88,7 @@ def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_pe
                     hl=lang, 
                     max_articles=max_articles,
                     time_period=time_period
+                    
                 )
             else:
                 gnews_result = search_gnews(
@@ -229,38 +230,38 @@ def serpapi_google_news_search(query, gl="us", hl="en", max_articles=10, time_pe
     newsapi_articles = []
     articles_needed_for_newsapi = max_articles - len(gnews_articles)
     
-    if articles_needed_for_newsapi > 0 and query:  # NewsAPI requires a query
-        logger.info(f"🔄 GNews provided {len(gnews_articles)} articles, trying NewsAPI for {articles_needed_for_newsapi} more")
-        newsapi_articles = _try_newsapi_search(query, hl, articles_needed_for_newsapi, "NewsAPI (48h complement)")
+    # if articles_needed_for_newsapi > 0 and query:  # NewsAPI requires a query
+    #     logger.info(f"🔄 GNews provided {len(gnews_articles)} articles, trying NewsAPI for {articles_needed_for_newsapi} more")
+    #     newsapi_articles = _try_newsapi_search(query, hl, articles_needed_for_newsapi, "NewsAPI (48h complement)")
         
-        # Check if we now have enough articles
-        total_articles_so_far = len(gnews_articles) + len(newsapi_articles)
-        if total_articles_so_far >= max_articles:
-            logger.info(f"🎯 GNews + NewsAPI provided enough articles ({total_articles_so_far}>={max_articles}), skipping SerpAPI")
-            all_articles = (gnews_articles + newsapi_articles)[:max_articles]
+    #     # Check if we now have enough articles
+    #     total_articles_so_far = len(gnews_articles) + len(newsapi_articles)
+    #     if total_articles_so_far >= max_articles:
+    #         logger.info(f"🎯 GNews + NewsAPI provided enough articles ({total_articles_so_far}>={max_articles}), skipping SerpAPI")
+    #         all_articles = (gnews_articles + newsapi_articles)[:max_articles]
             
-            # Determine source
-            if len(gnews_articles) > 0 and len(newsapi_articles) > 0:
-                source = "gnews_and_newsapi"
-            elif len(gnews_articles) > 0:
-                source = "gnews_only"
-            else:
-                source = "newsapi_only"
+    #         # Determine source
+    #         if len(gnews_articles) > 0 and len(newsapi_articles) > 0:
+    #             source = "gnews_and_newsapi"
+    #         elif len(gnews_articles) > 0:
+    #             source = "gnews_only"
+    #         else:
+    #             source = "newsapi_only"
             
-            return {
-                "success": True,
-                "totalArticles": len(all_articles),
-                "articles": all_articles,
-                "serpapi_data": {
-                    "related_topics": [],
-                    "menu_links": [],
-                    "topic_token": topic_token
-                },
-                "source": source,
-                "gnews_count": len(gnews_articles),
-                "newsapi_count": len(newsapi_articles),
-                "used_us_fallback": gl.lower() != "us" and len(gnews_articles) > 0
-            }
+    #         return {
+    #             "success": True,
+    #             "totalArticles": len(all_articles),
+    #             "articles": all_articles,
+    #             "serpapi_data": {
+    #                 "related_topics": [],
+    #                 "menu_links": [],
+    #                 "topic_token": topic_token
+    #             },
+    #             "source": source,
+    #             "gnews_count": len(gnews_articles),
+    #             "newsapi_count": len(newsapi_articles),
+    #             "used_us_fallback": gl.lower() != "us" and len(gnews_articles) > 0
+    #         }
 
     # Step 2: Calculate how many more articles we need from SerpAPI
     articles_needed = max_articles - len(gnews_articles) - len(newsapi_articles)
@@ -533,6 +534,7 @@ def gnews_search(query, lang="en", country="us", max_articles=10, from_date=None
                 time_period = "d"  # Last day
             elif diff <= timedelta(days=7):
                 time_period = "w"  # Last week
+            time_period = "d"
             # If older than a week, don't set time_period (all time)
         except:
             logger.warning(f"⚠️ Could not parse from_date '{from_date}', using all time")
@@ -795,14 +797,14 @@ def summarize_article_content(content):
         if len(content) > max_content_length:
             content = content[:max_content_length] + "..."
         
-        prompt = f"""Summarize this news article in under 100 words. Focus on the key facts, main events, and most important details. Be concise and factual:
+        prompt = f"""Summarize this news article in under 200 words. Focus on the key facts, main events, and most important details. Be concise and factual:
 
 {content}
 
 Summary:"""
 
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": "You are a news summarization expert. Create concise, factual summaries under 100 words that capture the essential information."},
                 {"role": "user", "content": prompt}

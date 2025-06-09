@@ -40,6 +40,7 @@ from modules.news.news_helper import get_articles_subtopics_user
 from modules.news.serpapi import format_gnews_articles_for_prysm, gnews_search, gnews_top_headlines
 from modules.notifications.push import send_push_notification
 from modules.scheduling.tasks import get_aifeed_reports, get_complete_report, refresh_articles, should_trigger_update_for_user, trigger_user_update_async, update
+from modules.content.simple_interactive_test import interactive_test
 logger.info("--- main.py: Logging configured ---")
 
 # Initialize Firebase app
@@ -2967,4 +2968,211 @@ def update_endpoint(req: https_fn.Request) -> https_fn.Response:
             "timestamp": datetime.now().isoformat()
         }
         return https_fn.Response(json.dumps(error_response), headers=headers, status=500)
+
+@https_fn.on_request(timeout_sec=60)
+def start_interactive_test(req: https_fn.Request) -> https_fn.Response:
+    """
+    Start a simple interactive podcast test session.
+    
+    Expected request (POST):
+    {
+        "user_id": "test_user"  // Optional
+    }
+    
+    Returns:
+    {
+        "success": true,
+        "session_id": "uuid",
+        "message": "Test session ready!",
+        "sample_questions": [...]
+    }
+    """
+    # Handle CORS
+    if req.method == 'OPTIONS':
+        headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Max-Age': '3600'
+        }
+        return https_fn.Response('', headers=headers)
+    
+    if req.method != 'POST':
+        headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+        }
+        return https_fn.Response(
+            json.dumps({"success": False, "error": "Method not allowed. Use POST."}),
+            headers=headers,
+            status=405
+        )
+    
+    try:
+        data = req.get_json() or {}
+        user_id = data.get('user_id', 'test_user')
+        
+        logger.info(f"🧪 Starting interactive test for user: {user_id}")
+        
+        result = interactive_test.create_test_session(user_id)
+        
+        headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+        }
+        
+        return https_fn.Response(json.dumps(result), headers=headers)
+        
+    except Exception as e:
+        logger.error(f"Error starting interactive test: {e}")
+        headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+        }
+        return https_fn.Response(
+            json.dumps({"success": False, "error": str(e)}),
+            headers=headers,
+            status=500
+        )
+
+@https_fn.on_request(timeout_sec=120)
+def generate_test_audio(req: https_fn.Request) -> https_fn.Response:
+    """
+    Generate audio for the test podcast.
+    
+    Expected request (POST):
+    {
+        "session_id": "uuid",
+        "voice_id": "voice_id"  // Optional
+    }
+    
+    Returns:
+    {
+        "success": true,
+        "audio_url": "https://storage.googleapis.com/...",
+        "message": "Audio ready for testing!"
+    }
+    """
+    # Handle CORS
+    if req.method == 'OPTIONS':
+        headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Max-Age': '3600'
+        }
+        return https_fn.Response('', headers=headers)
+    
+    if req.method != 'POST':
+        headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+        }
+        return https_fn.Response(
+            json.dumps({"success": False, "error": "Method not allowed. Use POST."}),
+            headers=headers,
+            status=405
+        )
+    
+    try:
+        data = req.get_json() or {}
+        session_id = data.get('session_id')
+        voice_id = data.get('voice_id', '96c64eb5-a945-448f-9710-980abe7a514c')
+        
+        if not session_id:
+            raise ValueError("Missing session_id")
+        
+        logger.info(f"🔊 Generating test audio for session: {session_id}")
+        
+        result = interactive_test.generate_podcast_audio(session_id, voice_id)
+        
+        headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+        }
+        
+        return https_fn.Response(json.dumps(result), headers=headers)
+        
+    except Exception as e:
+        logger.error(f"Error generating test audio: {e}")
+        headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+        }
+        return https_fn.Response(
+            json.dumps({"success": False, "error": str(e)}),
+            headers=headers,
+            status=500
+        )
+
+@https_fn.on_request(timeout_sec=90)
+def handle_test_interruption(req: https_fn.Request) -> https_fn.Response:
+    """
+    Handle user interruption during test podcast.
+    
+    Expected request (POST):
+    {
+        "session_id": "uuid",
+        "user_question": "Tell me more about OpenAI updates"
+    }
+    
+    Returns:
+    {
+        "success": true,
+        "response": "AI response text",
+        "audio_url": "https://storage.googleapis.com/...",
+        "message": "Response ready!"
+    }
+    """
+    # Handle CORS
+    if req.method == 'OPTIONS':
+        headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Max-Age': '3600'
+        }
+        return https_fn.Response('', headers=headers)
+    
+    if req.method != 'POST':
+        headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+        }
+        return https_fn.Response(
+            json.dumps({"success": False, "error": "Method not allowed. Use POST."}),
+            headers=headers,
+            status=405
+        )
+    
+    try:
+        data = req.get_json() or {}
+        session_id = data.get('session_id')
+        user_question = data.get('user_question')
+        
+        if not session_id or not user_question:
+            raise ValueError("Missing session_id or user_question")
+        
+        logger.info(f"🎤 Handling test interruption: {session_id} - '{user_question}'")
+        
+        result = interactive_test.handle_interruption(session_id, user_question)
+        
+        headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+        }
+        
+        return https_fn.Response(json.dumps(result), headers=headers)
+        
+    except Exception as e:
+        logger.error(f"Error handling test interruption: {e}")
+        headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+        }
+        return https_fn.Response(
+            json.dumps({"success": False, "error": str(e)}),
+            headers=headers,
+            status=500
+        )
 

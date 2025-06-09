@@ -1,0 +1,83 @@
+{
+  "0.0-24347.9": {
+    "section_name": "INTRO",
+    "article_id": null,
+    "start_seconds": 0.0,
+    "end_seconds": 24347.887159863945,
+    "duration_seconds": 24347.887159863945,
+    "word_count": 44,
+    "content_preview": "Hey there! Welcome to your personalized tech briefing. I'm Alex, and today we've got some fascinatin..."
+  },
+  "24347.9-48695.8": {
+    "section_name": "<<article1>>",
+    "article_id": "<<article1>>",
+    "start_seconds": 24347.887159863945,
+    "end_seconds": 48695.77431972789,
+    "duration_seconds": 24347.887159863945,
+    "word_count": 75,
+    "content_preview": "Speaking of artificial intelligence, OpenAI just dropped some major news about GPT-5 development. Ac..."
+  },
+  "48695.8-73043.7": {
+    "section_name": "<<article2>>",
+    "article_id": "<<article2>>",
+    "start_seconds": 48695.77431972789,
+    "end_seconds": 73043.66147959183,
+    "duration_seconds": 24347.887159863945,
+    "word_count": 82,
+    "content_preview": "Oh, and here's something that caught my eye from the startup world. European fintech company Revolut..."
+  },
+  "73043.7-97391.5": {
+    "section_name": "<<article3>>",
+    "article_id": "<<article3>>",
+    "start_seconds": 73043.66147959183,
+    "end_seconds": 97391.54863945578,
+    "duration_seconds": 24347.887159863945,
+    "word_count": 89,
+    "content_preview": "You know what's been making waves on Reddit? This whole drama around Binance's new trading fees. The..."
+  },
+  "97391.5-121739.4": {
+    "section_name": "<<article4>>",
+    "article_id": "<<article4>>",
+    "start_seconds": 97391.54863945578,
+    "end_seconds": 121739.43579931973,
+    "duration_seconds": 24347.887159863945,
+    "word_count": 84,
+    "content_preview": "Here's something from the climate tech space that's really exciting. According to Bloomberg, Swedish..."
+  },
+  "121739.4-146087.3": {
+    "section_name": "<<article5>>",
+    "article_id": "<<article5>>",
+    "start_seconds": 121739.43579931973,
+    "end_seconds": 146087.3229591837,
+    "duration_seconds": 24347.887159863945,
+    "word_count": 95,
+    "content_preview": "Now this is wild - Meta just announced they're shutting down their VR social platform Horizon Worlds..."
+  },
+  "146087.3-170435.2": {
+    "section_name": "<<article6>>",
+    "article_id": "<<article6>>",
+    "start_seconds": 146087.3229591837,
+    "end_seconds": 170435.21011904764,
+    "duration_seconds": 24347.887159863945,
+    "word_count": 87,
+    "content_preview": "Speaking of productivity, GitHub Copilot just got a massive upgrade. Microsoft announced that the ne..."
+  },
+  "170435.2-194783.1": {
+    "section_name": "<<article7>>",
+    "article_id": "<<article7>>",
+    "start_seconds": 170435.21011904764,
+    "end_seconds": 194783.0972789116,
+    "duration_seconds": 24347.887159863945,
+    "word_count": 83,
+    "content_preview": "Here's something that's flying under the radar but could be huge. Japanese robotics company SoftBank..."
+  },
+  "194783.1-219131.0": {
+    "section_name": "CONCLUSION",
+    "article_id": null,
+    "start_seconds": 194783.0972789116,
+    "end_seconds": 219130.98443877554,
+    "duration_seconds": 24347.887159863945,
+    "word_count": 72,
+    "content_preview": "And that's your tech briefing for today! From OpenAI's GPT-5 breakthrough to Meta's metaverse pivot,..."
+  }
+}

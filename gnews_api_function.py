@@ -2,7 +2,11 @@ import json
 import urllib.request
 import urllib.parse
 from typing import Optional, Dict, Any
+from datetime import datetime, timedelta, timezone
 
+def get_24hrs_ago_utc():
+    time_24hrs_ago = datetime.now(timezone.utc) - timedelta(hours=24)
+    return time_24hrs_ago.strftime('%Y-%m-%dT%H:%M:%SZ')
 def search_gnews(query: str, gl: str = "us", hl: str = "en", max_articles: int = 10, time_period: Optional[str] = None) -> Dict[str, Any]:
     """
     Search for news articles using the GNews API.
@@ -15,24 +19,28 @@ def search_gnews(query: str, gl: str = "us", hl: str = "en", max_articles: int =
         time_period (str, optional): Time period filter (e.g., "7d", "1m", "1y")
         
     Returns:
-        Dict[str, Any]: JSON response from GNews API
+        Dict[str, Any]: JS ON response from GNews API
     """
     
     # Base URL for GNews API
     base_url = "https://gnews.io/api/v4/search"
+
     
+    from_ = get_24hrs_ago_utc()
+    # Example usage
+    print(get_24hrs_ago_utc())
     # Map parameters to GNews API format
     params = {
         "q": query,
         "country": gl, 
         "lang": hl,
         "max": max_articles,
+        "expand": "content",
+        "from": from_,
         "apikey": "75807d7923a12e3d80d64c971ff340da"  # GNews API key
     }
     
-    # Add time period if specified
-    if time_period:
-        params["period"] = time_period
+   
     
     # Encode parameters
     encoded_params = urllib.parse.urlencode(params)
