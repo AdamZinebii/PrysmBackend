@@ -216,6 +216,4 @@ and that you have added tests for new functionality.
 
 ## License
 
-This repository does not currently specify a license. If you intend to
-use this project in production or contribute to it, consider discussing
-licensing with the project maintainers.
+GPL3
